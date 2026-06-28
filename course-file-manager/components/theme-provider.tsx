@@ -34,26 +34,25 @@ function applyTheme(theme: Theme) {
   localStorage.setItem(THEME_STORAGE_KEY, theme);
 }
 
-function getInitialTheme(): Theme {
-  if (typeof window === "undefined") {
-    return "light";
-  }
-
-  const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-
-  return isTheme(storedTheme) ? storedTheme : "light";
-}
-
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>(getInitialTheme);
+  const [theme, setThemeState] = useState<Theme>("light");
 
   const setTheme = useCallback((nextTheme: Theme) => {
     setThemeState(nextTheme);
+    applyTheme(nextTheme);
   }, []);
 
   useEffect(() => {
-    applyTheme(theme);
-  }, [theme]);
+    const storedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+    const initialTheme = isTheme(storedTheme) ? storedTheme : "light";
+    const timeout = window.setTimeout(() => {
+      setThemeState(initialTheme);
+    }, 0);
+
+    applyTheme(initialTheme);
+
+    return () => window.clearTimeout(timeout);
+  }, []);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
 

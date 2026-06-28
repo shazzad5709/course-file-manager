@@ -34,7 +34,7 @@ A full-stack web application for managing, renaming, and organizing academic cou
 |---|---|---|
 | `id` | uuid | Primary key |
 | `course_id` | uuid | Foreign key → Course |
-| `section_label` | text | e.g. `A`, `B`, `C` |
+| `section_label` | text | Batch+section label, e.g. `43A`, `43B`, `44C` |
 | `teacher_initial` | text | e.g. `NT`, `RK` |
 | `role` | enum | `Section Teacher`, `Module Leader`, or `Both` |
 | `created_at` | timestamp | |
@@ -71,9 +71,9 @@ The `Category` field in filenames for representative examples is always one of: 
 | Quiz Script Q1/Q2/Q3 (×3 each) | `CourseCode_Section_Quiz[N]_TeacherInitial_Category_Semester.pdf` |
 | Quiz Question Q1/Q2/Q3 | `CourseCode_Section_Quiz[N]_Question_TeacherInitial_Semester.pdf` |
 | Assignment Report (×3) | `CourseCode_Section_Assignment_TeacherInitial_Category_Semester.pdf` |
-| Assignment Rubrics | `CourseCode_Section_Assignment_Rubrics_TeacherInitial_Semester.xlsx` |
+| Assignment Gradesheet / Rubrics (Mark Sheet) | `CourseCode_Section_Assignment_Rubrics_TeacherInitial_Semester.xlsx` |
 | Presentation Report (×3) | `CourseCode_Section_Presentation_TeacherInitial_Category_Semester.ppt` |
-| Presentation Rubrics | `CourseCode_Section_Presentation_Rubrics_TeacherInitial_Semester.xlsx` |
+| Presentation Gradesheet / Rubrics (Mark Sheet) | `CourseCode_Section_Presentation_Rubrics_TeacherInitial_Semester.xlsx` |
 | Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.pdf` |
 | CER File | `CourseCode_Section_TeacherInitial_CER_Semester.xlsx` |
 
@@ -95,13 +95,14 @@ The `Category` field in filenames for representative examples is always one of: 
 | Slot | Naming Pattern |
 |---|---|
 | Lab Final Script (×3) | `CourseCode_Section_LabFinal_TeacherInitial_Category_Semester.pdf` |
-| Lab Final Rubrics | `CourseCode_Section_LabFinal_Rubrics_TeacherInitial_Semester.pdf` |
+| Lab Final Gradesheet / Rubrics | `CourseCode_Section_LabFinal_Rubrics_TeacherInitial_Semester.pdf` |
 | Lab Final Question | `CourseCode_Section_LabFinal_Question_TeacherInitial_Semester.pdf` |
 | Lab Report (×3) | `CourseCode_Section_LabReport_TeacherInitial_Category_Semester.pdf` |
-| Lab Report Rubrics | `CourseCode_Section_LabReport_Rubrics_TeacherInitial_Semester.pdf` |
+| Lab Report Gradesheet / Rubrics | `CourseCode_Section_LabReport_Rubrics_TeacherInitial_Semester.pdf` |
 | Lab Performance (×3) | `CourseCode_Section_LabMid_TeacherInitial_Category_Semester.pdf` |
-| Lab Performance Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
-| Lab Tabulation Sheet | `CourseCode_Section_LabTabulationSheet_TeacherInitial_Semester.pdf` |
+| Lab Performance Question | `CourseCode_Section_LabPerformance_Question_TeacherInitial_Semester.pdf` |
+| Lab Performance Gradesheet / Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
+| Final Section-wise Gradesheet / Lab Tabulation Sheet | `CourseCode_Section_LabTabulationSheet_TeacherInitial_Semester.pdf` |
 | Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.xlsx` |
 | CER File | `CourseCode_Section_TeacherInitial_CER_Semester.xlsx` |
 | Teacher's Profile (CV) | `CourseCode_Section_CV_TeacherInitial_Semester.xlsx` |
@@ -125,12 +126,12 @@ The `Category` field in filenames for representative examples is always one of: 
 | Slot | Naming Pattern |
 |---|---|
 | Project Final Document (×3) | `CourseCode_Section_ProjectFinal_TeacherInitial_Category_Semester.pdf` |
-| Project Final Rubrics | `CourseCode_Section_ProjectFinal_Rubrics_TeacherInitial_Semester.pdf` |
+| Project Final Gradesheet / Rubrics | `CourseCode_Section_ProjectFinal_Rubrics_TeacherInitial_Semester.pdf` |
 | Project Report (×3) | `CourseCode_Section_ProjectReport_TeacherInitial_Category_Semester.pdf` |
-| Project Report Rubrics | `CourseCode_Section_ProjectReport_Rubrics_TeacherInitial_Semester.pdf` |
+| Project Report Gradesheet / Rubrics | `CourseCode_Section_ProjectReport_Rubrics_TeacherInitial_Semester.pdf` |
 | Lab Performance Document (×3) | `CourseCode_Section_LabPerformance_TeacherInitial_Category_Semester.pdf` |
-| Lab Performance Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
-| Project Tabulation Sheet | `CourseCode_Section_ProjectTabulationSheet_TeacherInitial_Semester.pdf` |
+| Lab Performance Gradesheet / Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
+| Final Section-wise Gradesheet / Project Tabulation Sheet | `CourseCode_Section_ProjectTabulationSheet_TeacherInitial_Semester.pdf` |
 | Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.xlsx` |
 | Project List | `CourseCode_Section_TeacherInitial_ProjectList_Semester.xlsx` |
 | CER File | `CourseCode_Section_TeacherInitial_CER_Semester.xlsx` |
@@ -150,10 +151,10 @@ The `Category` field in filenames for representative examples is always one of: 
 ```
 CourseCode_CoordinatorInitial_Semester/
 ├── [course-level files]
-├── CourseCode_SectionA_TeacherInitial_Semester/
-│   └── [section-level files for Section A]
-└── CourseCode_SectionB_TeacherInitial_Semester/
-    └── [section-level files for Section B]
+├── CourseCode_43A_TeacherInitial_Semester/
+│   └── [section-level files for Section 43A]
+└── CourseCode_43B_TeacherInitial_Semester/
+    └── [section-level files for Section 43B]
 ```
 
 ### If user is Section Teacher only:
@@ -170,12 +171,12 @@ SE232_NT_Fall-25/
 ├── SE232_MidQuestion_Fall-25.pdf
 ├── SE232_CombinedCER_NT_Fall-25.xlsx
 ├── SE232_CourseReport_NT_Fall-25.pdf
-├── SE232_A_NT_Fall-25/
-│   ├── SE232_A_Final_NT_Highest_Fall-25.pdf
-│   ├── SE232_A_Final_NT_Average_Fall-25.pdf
-│   ├── SE232_A_Final_NT_Marginal_Fall-25.pdf
+├── SE232_43A_NT_Fall-25/
+│   ├── SE232_43A_Final_NT_Highest_Fall-25.pdf
+│   ├── SE232_43A_Final_NT_Average_Fall-25.pdf
+│   ├── SE232_43A_Final_NT_Marginal_Fall-25.pdf
 │   └── ...
-└── SE232_B_RK_Fall-25/
+└── SE232_43B_RK_Fall-25/
     └── ...
 ```
 

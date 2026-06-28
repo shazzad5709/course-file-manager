@@ -102,7 +102,7 @@ Tasks:
    - A "Sections" panel listing sections as cards with: section label, teacher initial, role badge, placeholder completion progress (0%)
    - "Add Section" button that opens a dialog
 3. Build the Add/Edit Section Dialog (components/section-dialog.tsx):
-   - Fields: Section Label (text, e.g. A, B), Teacher Initial, Role (select: Section Teacher / Module Leader / Both)
+   - Fields: Section Label (batch+section text, e.g. 43A, 43B), Teacher Initial, Role (select: Section Teacher / Module Leader / Both)
    - Validates all fields before submit
    - On submit: creates/updates section, refreshes list
 4. Each section card has Edit and Delete actions (dropdown, with AlertDialog confirm for delete).
@@ -137,7 +137,7 @@ Tasks:
    
    c. THEORY_COURSE_SLOTS: SlotDefinition[] — all 8 course-level slots from Section 3.2
    
-   d. LAB_SECTION_SLOTS: SlotDefinition[] — all 15 section-level slots from Section 3.3
+   d. LAB_SECTION_SLOTS: SlotDefinition[] — all 16 section-level slot groups from Section 3.3
    
    e. LAB_COURSE_SLOTS: SlotDefinition[] — all 5 course-level slots from Section 3.4
    

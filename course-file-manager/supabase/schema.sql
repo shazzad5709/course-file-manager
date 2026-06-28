@@ -36,3 +36,46 @@ create table if not exists public.file_entries (
 create index if not exists sections_course_id_idx on public.sections(course_id);
 create index if not exists file_entries_course_id_idx on public.file_entries(course_id);
 create index if not exists file_entries_section_id_idx on public.file_entries(section_id);
+
+insert into storage.buckets (id, name, public)
+values ('course-files', 'course-files', true)
+on conflict (id) do update set public = true;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'course_files_anon_read'
+  ) then
+    create policy "course_files_anon_read"
+    on storage.objects for select
+    to anon
+    using (bucket_id = 'course-files');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'course_files_anon_insert'
+  ) then
+    create policy "course_files_anon_insert"
+    on storage.objects for insert
+    to anon
+    with check (bucket_id = 'course-files');
+  end if;
+
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'storage'
+      and tablename = 'objects'
+      and policyname = 'course_files_anon_delete'
+  ) then
+    create policy "course_files_anon_delete"
+    on storage.objects for delete
+    to anon
+    using (bucket_id = 'course-files');
+  end if;
+end $$;

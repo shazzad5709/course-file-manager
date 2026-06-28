@@ -11,7 +11,7 @@
   --color-foreground: var(--foreground);
   --color-text-default: var(--text-default);
   --color-text-faded: var(--text-faded);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);

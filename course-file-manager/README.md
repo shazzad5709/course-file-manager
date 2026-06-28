@@ -30,7 +30,7 @@ Required variables:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=your-supabase-publishable-key
 ```
 
 Start the development server:
@@ -46,7 +46,7 @@ Open http://localhost:3000.
 1. Create a new Supabase project from the Supabase dashboard.
 2. Open Project Settings, then API.
 3. Copy the project URL into `NEXT_PUBLIC_SUPABASE_URL`.
-4. Copy the anon public key into `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. Copy the publishable key into `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 5. Open the SQL Editor.
 6. Paste and run the contents of `supabase/schema.sql`.
 
@@ -62,6 +62,11 @@ Create one Supabase Storage bucket:
 
 - Bucket name: `course-files`
 - Public bucket: enabled
+
+The schema also includes Storage policies for the `course-files` bucket so this
+unauthenticated V1 app can upload, read, and delete files with the Supabase
+publishable key. If uploads fail with `new row violates row-level security
+policy`, rerun the Storage policy section in `supabase/schema.sql`.
 
 The app will use these path conventions:
 

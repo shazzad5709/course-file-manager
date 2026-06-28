@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": false,
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "noEmit": false,
+    "outDir": ".test-build",
+    "rootDir": ".",
+    "verbatimModuleSyntax": false
+  },
+  "include": ["lib/slots.ts", "lib/naming.ts", "lib/*.test.ts"]
+}
