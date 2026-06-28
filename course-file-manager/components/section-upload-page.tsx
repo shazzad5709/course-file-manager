@@ -1,8 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Check, FileArchive } from "lucide-react";
+import { Check, FileArchive } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteFile, uploadFile } from "@/lib/actions/files";
@@ -15,7 +14,6 @@ import {
   getSectionZipFilename,
 } from "@/lib/zip";
 import { SlotCard } from "@/components/slot-card";
-import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/ui/breadcrumb";
 import { Button } from "@/components/ui/button";
 import {
@@ -68,15 +66,6 @@ const DOCUMENT_GROUP_TITLES = new Set([
   "Lecture Sample",
   "Teacher's Profile",
 ]);
-
-const ROLE_STYLES = {
-  "Section Teacher":
-    "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200",
-  "Module Leader":
-    "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
-  Both:
-    "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-200",
-};
 
 function getSlotKey(slot: SlotDefinition) {
   return `${slot.category}:${slot.subCategory ?? ""}:${slot.quizNumber ?? ""}`;
@@ -172,6 +161,16 @@ function getGroupUploadedCount(
     .length;
 }
 
+function getSectionPeople(section: Section) {
+  const people = [`Teacher: ${section.teacher_initial}`];
+
+  if (section.role === "Module Leader" || section.role === "Both") {
+    people.push(`Module Leader: ${section.teacher_initial}`);
+  }
+
+  return people.join(" | ");
+}
+
 function renderGroupSlots(
   group: SlotGroup,
   displayEntryBySlotKey: Map<string, FileEntry>,
@@ -223,22 +222,16 @@ export function SectionUploadPage({
   const progress = slots.length > 0 ? (uploadedCount / slots.length) * 100 : 0;
   const groupedSlots = useMemo(() => groupSlots(slots), [slots]);
   const isProjectCourse = course.course_type === "Project";
-  const incompleteGroups = groupedSlots.filter(
-    (group) => !isGroupComplete(group, completedEntryBySlotKey),
-  );
-  const completedGroups = groupedSlots.filter((group) =>
-    isGroupComplete(group, completedEntryBySlotKey),
-  );
-  const regularIncompleteGroups = incompleteGroups.filter(
+  const regularGroups = groupedSlots.filter(
     (group) => !isCompactGroup(group) && !isRecordGroup(group),
   );
-  const recordIncompleteGroups = incompleteGroups.filter(isRecordGroup);
-  const compactIncompleteGroups = incompleteGroups.filter(isCompactGroup);
-  const regularCompletedGroups = completedGroups.filter(
-    (group) => !isCompactGroup(group) && !isRecordGroup(group),
-  );
-  const recordCompletedGroups = completedGroups.filter(isRecordGroup);
-  const compactCompletedGroups = completedGroups.filter(isCompactGroup);
+  const recordGroups = groupedSlots.filter(isRecordGroup);
+  const compactGroups = groupedSlots.filter(isCompactGroup);
+  const sectionDocumentsComplete =
+    compactGroups.length > 0 &&
+    compactGroups.every((group) =>
+      isGroupComplete(group, completedEntryBySlotKey),
+    );
 
   if (isProjectCourse) {
     return (
@@ -247,30 +240,16 @@ export function SectionUploadPage({
           <Breadcrumb
             items={[
               { label: "Dashboard", href: "/" },
-              { label: course.course_name, href: `/courses/${course.id}` },
+              { label: course.course_code, href: `/courses/${course.id}` },
               { label: `Section ${section.section_label}` },
             ]}
           />
-          <Button
-            variant="link"
-            className="h-auto px-0"
-            nativeButton={false}
-            render={<Link href={`/courses/${course.id}`} />}
-          >
-            <ArrowLeft />
-            Course
-          </Button>
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-normal">
-                {course.course_code} - Section {section.section_label}
-              </h1>
-              <Badge variant="outline" className={ROLE_STYLES[section.role]}>
-                {section.role}
-              </Badge>
-            </div>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {course.course_code} - Section {section.section_label}
+            </h1>
             <p className="mt-2 text-sm text-[var(--text-faded)]">
-              Teacher: {section.teacher_initial}
+              {getSectionPeople(section)}
             </p>
           </div>
         </div>
@@ -372,7 +351,9 @@ export function SectionUploadPage({
       downloadBlob(blob, getSectionZipFilename(section));
       toast.success("Section ZIP exported.");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ZIP export failed.");
+      toast.error(
+        error instanceof Error ? error.message : "ZIP export failed.",
+      );
     } finally {
       setIsExportingZip(false);
     }
@@ -384,31 +365,17 @@ export function SectionUploadPage({
         <Breadcrumb
           items={[
             { label: "Dashboard", href: "/" },
-            { label: course.course_name, href: `/courses/${course.id}` },
+            { label: course.course_code, href: `/courses/${course.id}` },
             { label: `Section ${section.section_label}` },
           ]}
         />
-        <Button
-          variant="link"
-          className="h-auto px-0"
-          nativeButton={false}
-          render={<Link href={`/courses/${course.id}`} />}
-        >
-          <ArrowLeft />
-          Course
-        </Button>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h1 className="text-3xl font-semibold tracking-normal">
-                {course.course_code} - Section {section.section_label}
-              </h1>
-              <Badge variant="outline" className={ROLE_STYLES[section.role]}>
-                {section.role}
-              </Badge>
-            </div>
+            <h1 className="text-3xl font-semibold tracking-normal">
+              {course.course_code} - Section {section.section_label}
+            </h1>
             <p className="mt-2 text-sm text-[var(--text-faded)]">
-              Teacher: {section.teacher_initial}
+              {getSectionPeople(section)}
             </p>
           </div>
           <Button
@@ -438,39 +405,68 @@ export function SectionUploadPage({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
         <div className="space-y-8">
-          {regularIncompleteGroups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <h2 className="text-lg font-semibold">{group.title}</h2>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {renderGroupSlots(
-                  group,
-                  displayEntryBySlotKey,
-                  handleUpload,
-                  handleDelete,
-                )}
-              </div>
-            </section>
-          ))}
+          {regularGroups.map((group) => {
+            const isComplete = isGroupComplete(group, completedEntryBySlotKey);
 
-          {recordIncompleteGroups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <h2 className="text-lg font-semibold">{group.title}</h2>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {renderGroupSlots(
-                  group,
-                  displayEntryBySlotKey,
-                  handleUpload,
-                  handleDelete,
-                )}
-              </div>
-            </section>
-          ))}
+            return (
+              <section key={group.title} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{group.title}</h2>
+                  {isComplete ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                      <Check className="size-3" />
+                    </span>
+                  ) : null}
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {renderGroupSlots(
+                    group,
+                    displayEntryBySlotKey,
+                    handleUpload,
+                    handleDelete,
+                  )}
+                </div>
+              </section>
+            );
+          })}
 
-          {compactIncompleteGroups.length > 0 ? (
+          {recordGroups.map((group) => {
+            const isComplete = isGroupComplete(group, completedEntryBySlotKey);
+
+            return (
+              <section key={group.title} className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold">{group.title}</h2>
+                  {isComplete ? (
+                    <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                      <Check className="size-3" />
+                    </span>
+                  ) : null}
+                </div>
+                <div className="grid gap-4 lg:grid-cols-2">
+                  {renderGroupSlots(
+                    group,
+                    displayEntryBySlotKey,
+                    handleUpload,
+                    handleDelete,
+                  )}
+                </div>
+              </section>
+            );
+          })}
+
+          {compactGroups.length > 0 ? (
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Section Documents</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold">Section Documents</h2>
+                {sectionDocumentsComplete ? (
+                  <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                    <Check className="size-3" />
+                  </span>
+                ) : null}
+              </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                {compactIncompleteGroups.flatMap((group) =>
+                {compactGroups.flatMap((group) =>
                   renderGroupSlots(
                     group,
                     displayEntryBySlotKey,
@@ -481,64 +477,13 @@ export function SectionUploadPage({
               </div>
             </section>
           ) : null}
-
-          {regularCompletedGroups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{group.title}</h2>
-                <Check className="size-5 text-emerald-600" />
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {renderGroupSlots(
-                  group,
-                  displayEntryBySlotKey,
-                  handleUpload,
-                  handleDelete,
-                )}
-              </div>
-            </section>
-          ))}
-
-          {recordCompletedGroups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{group.title}</h2>
-                <Check className="size-5 text-emerald-600" />
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {renderGroupSlots(
-                  group,
-                  displayEntryBySlotKey,
-                  handleUpload,
-                  handleDelete,
-                )}
-              </div>
-            </section>
-          ))}
-
-          {compactCompletedGroups.map((group) => (
-            <section key={group.title} className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-semibold">{group.title}</h2>
-                <Check className="size-5 text-emerald-600" />
-              </div>
-              <div className="grid gap-4 lg:grid-cols-2">
-                {renderGroupSlots(
-                  group,
-                  displayEntryBySlotKey,
-                  handleUpload,
-                  handleDelete,
-                )}
-              </div>
-            </section>
-          ))}
         </div>
 
         <aside className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4 xl:sticky xl:top-20">
           <div>
             <h2 className="text-sm font-semibold">Upload checklist</h2>
             <p className="mt-1 text-xs text-[var(--text-faded)]">
-              Completed sections move below but remain available on this page.
+              Track which upload sections are complete.
             </p>
           </div>
           <ul className="mt-4 space-y-2">

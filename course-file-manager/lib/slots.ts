@@ -96,7 +96,7 @@ export const THEORY_SECTION_SLOTS: SlotDefinition[] = [
   ),
   sectionSlot(
     "theory_assignment_rubrics",
-    "Assignment Gradesheet / Rubrics",
+    "Assignment Rubrics",
     ".xlsx",
   ),
   ...representativeSlots(
@@ -106,7 +106,7 @@ export const THEORY_SECTION_SLOTS: SlotDefinition[] = [
   ),
   sectionSlot(
     "theory_presentation_rubrics",
-    "Presentation Gradesheet / Rubrics",
+    "Presentation Rubrics",
     ".xlsx",
   ),
   sectionSlot("theory_gradesheet", "Gradesheet", ".xlsx"),

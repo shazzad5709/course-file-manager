@@ -218,7 +218,7 @@ export function SlotCard({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete uploaded file?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the uploaded file and makes this slot empty again.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

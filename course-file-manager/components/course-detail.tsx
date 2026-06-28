@@ -1,9 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FileArchive, MoreHorizontal, Plus } from "lucide-react";
+import { Check, FileArchive, MoreHorizontal, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteCourse } from "@/lib/actions/courses";
@@ -22,7 +21,6 @@ import type {
   CourseType,
   FileEntry,
   Section,
-  SectionRole,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import {
@@ -70,6 +68,19 @@ type CourseDetailProps = {
   allFileEntries: FileEntry[];
 };
 
+type CourseSlotGroup = {
+  title: string;
+  slots: SlotDefinition[];
+};
+
+const COURSE_LEVEL_GROUP_ORDER = [
+  "Reports",
+  "Mid",
+  "Final",
+  "Outline",
+  "Other Documents",
+];
+
 const COURSE_TYPE_STYLES: Record<CourseType, string> = {
   Theory:
     "border-sky-200 bg-sky-50 text-sky-800 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-200",
@@ -79,14 +90,75 @@ const COURSE_TYPE_STYLES: Record<CourseType, string> = {
     "border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-200",
 };
 
-const ROLE_STYLES: Record<SectionRole, string> = {
-  "Section Teacher":
-    "border-slate-200 bg-slate-50 text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200",
-  "Module Leader":
-    "border-violet-200 bg-violet-50 text-violet-800 dark:border-violet-900 dark:bg-violet-950 dark:text-violet-200",
-  Both:
-    "border-teal-200 bg-teal-50 text-teal-800 dark:border-teal-900 dark:bg-teal-950 dark:text-teal-200",
-};
+function getCourseLevelGroupTitle(slot: SlotDefinition) {
+  const category = slot.category;
+
+  if (category.includes("combined_cer") || category.includes("course_report")) {
+    return "Reports";
+  }
+
+  if (category.includes("mid")) {
+    return "Mid";
+  }
+
+  if (category.includes("final")) {
+    return "Final";
+  }
+
+  if (
+    category.includes("course_outline") ||
+    category.includes("assessment_criteria") ||
+    category.includes("manual") ||
+    category.includes("obe")
+  ) {
+    return "Outline";
+  }
+
+  return "Other Documents";
+}
+
+function groupCourseLevelSlots(slots: SlotDefinition[]): CourseSlotGroup[] {
+  const groups = new Map<string, SlotDefinition[]>();
+
+  for (const slot of slots) {
+    const title = getCourseLevelGroupTitle(slot);
+    groups.set(title, [...(groups.get(title) ?? []), slot]);
+  }
+
+  return Array.from(groups, ([title, groupedSlots]) => ({
+    title,
+    slots: groupedSlots,
+  })).sort(
+    (left, right) =>
+      COURSE_LEVEL_GROUP_ORDER.indexOf(left.title) -
+      COURSE_LEVEL_GROUP_ORDER.indexOf(right.title),
+  );
+}
+
+function isCourseGroupComplete(
+  group: CourseSlotGroup,
+  entryBySlotKey: Map<string, FileEntry>,
+) {
+  return group.slots.every((slot) => entryBySlotKey.has(getSlotKey(slot)));
+}
+
+function getCourseGroupUploadedCount(
+  group: CourseSlotGroup,
+  entryBySlotKey: Map<string, FileEntry>,
+) {
+  return group.slots.filter((slot) => entryBySlotKey.has(getSlotKey(slot)))
+    .length;
+}
+
+function getSectionPeople(section: Section) {
+  const people = [`Teacher: ${section.teacher_initial}`];
+
+  if (section.role === "Module Leader" || section.role === "Both") {
+    people.push(`Module Leader: ${section.teacher_initial}`);
+  }
+
+  return people.join(" | ");
+}
 
 export function CourseDetail({
   course,
@@ -107,6 +179,10 @@ export function CourseDetail({
     () => getSlotsForCourse(course.course_type, "section"),
     [course.course_type],
   );
+  const courseLevelGroups = useMemo(
+    () => groupCourseLevelSlots(courseLevelSlots),
+    [courseLevelSlots],
+  );
   const courseEntryBySlotKey = useMemo(() => {
     const map = new Map<string, FileEntry>();
 
@@ -116,11 +192,22 @@ export function CourseDetail({
 
     return map;
   }, [courseEntries]);
+  const completedCourseEntryBySlotKey = useMemo(() => {
+    const map = new Map<string, FileEntry>();
+
+    for (const entry of courseEntries) {
+      if (!entry.id.startsWith("optimistic:")) {
+        map.set(getFileEntryKey(entry), entry);
+      }
+    }
+
+    return map;
+  }, [courseEntries]);
   const showCourseLevelDocuments = hasCourseLevelRequirements(course, sections);
   const isProjectCourse = course.course_type === "Project";
   const courseLevelCompletion = calculateSlotCompletion(
     courseLevelSlots,
-    courseEntries,
+    courseEntries.filter((entry) => !entry.id.startsWith("optimistic:")),
   );
 
   function getSectionCompletion(section: Section) {
@@ -264,21 +351,12 @@ export function CourseDetail({
       <Breadcrumb
         items={[
           { label: "Dashboard", href: "/" },
-          { label: course.course_name },
+          { label: course.course_code },
         ]}
       />
 
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
         <div className="space-y-3">
-          <Button
-            variant="link"
-            className="h-auto px-0"
-            nativeButton={false}
-            render={<Link href="/" />}
-          >
-            <ArrowLeft />
-            Dashboard
-          </Button>
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-normal">
@@ -376,41 +454,114 @@ export function CourseDetail({
               <ProgressValue />
             </Progress>
           </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {courseLevelSlots.map((slot) => (
-              <SlotCard
-                key={getSlotKey(slot)}
-                slot={slot}
-                fileEntry={courseEntryBySlotKey.get(getSlotKey(slot)) ?? null}
-                onUpload={handleCourseFileUpload}
-                onDelete={handleCourseFileDelete}
-              />
-            ))}
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+            <div className="space-y-8">
+              {courseLevelGroups.map((group) => {
+                const isComplete = isCourseGroupComplete(
+                  group,
+                  completedCourseEntryBySlotKey,
+                );
+
+                return (
+                  <section key={group.title} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">{group.title}</h3>
+                      {isComplete ? (
+                        <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                          <Check className="size-3" />
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {group.slots.map((slot) => (
+                        <SlotCard
+                          key={getSlotKey(slot)}
+                          slot={slot}
+                          fileEntry={
+                            courseEntryBySlotKey.get(getSlotKey(slot)) ?? null
+                          }
+                          onUpload={handleCourseFileUpload}
+                          onDelete={handleCourseFileDelete}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <aside className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4 xl:sticky xl:top-20">
+              <div>
+                <h3 className="text-sm font-semibold">Upload checklist</h3>
+                <p className="mt-1 text-xs text-[var(--text-faded)]">
+                  Track which course-level sections are complete.
+                </p>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {courseLevelGroups.map((group) => {
+                  const groupUploadedCount = getCourseGroupUploadedCount(
+                    group,
+                    completedCourseEntryBySlotKey,
+                  );
+                  const isComplete = groupUploadedCount === group.slots.length;
+
+                  return (
+                    <li key={group.title}>
+                      <div className="flex items-start gap-2 rounded-md px-2 py-1.5">
+                        <span
+                          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                            isComplete
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-[var(--border)] text-[var(--text-faded)]"
+                          }`}
+                        >
+                          {isComplete ? <Check className="size-3" /> : null}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`text-xs font-medium ${
+                              isComplete
+                                ? "text-[var(--text-faded)]"
+                                : "text-[var(--text-default)]"
+                            }`}
+                          >
+                            {group.title}
+                          </p>
+                          <p className="text-xs text-[var(--text-faded)]">
+                            {groupUploadedCount}/{group.slots.length}
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
           </div>
         </section>
       ) : null}
 
       {!isProjectCourse ? (
-      <section className="space-y-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-xl font-semibold">Sections</h2>
-            <p className="mt-1 text-sm text-[var(--text-faded)]">
-              Manage section teachers and section-level progress.
-            </p>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">Sections</h2>
+              <p className="mt-1 text-sm text-[var(--text-faded)]">
+                Manage section teachers and section-level progress.
+              </p>
+            </div>
+            <Button onClick={openCreateSectionDialog}>
+              <Plus />
+              Add Section
+            </Button>
           </div>
-          <Button onClick={openCreateSectionDialog}>
-            <Plus />
-            Add Section
-          </Button>
-        </div>
 
-        {sections.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {sections.map((section) => {
-              const sectionCompletion = getSectionCompletion(section);
+          {sections.length > 0 ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sections.map((section) => {
+                const sectionCompletion = getSectionCompletion(section);
 
-              return (
+                return (
                   <Card
                     key={section.id}
                     role="button"
@@ -435,7 +586,7 @@ export function CourseDetail({
                         Section {section.section_label}
                       </CardTitle>
                       <CardDescription>
-                        Teacher: {section.teacher_initial}
+                        {getSectionPeople(section)}
                       </CardDescription>
                       <CardAction onClick={(event) => event.stopPropagation()}>
                         <DropdownMenu>
@@ -467,12 +618,6 @@ export function CourseDetail({
                       </CardAction>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <Badge
-                        variant="outline"
-                        className={cn(ROLE_STYLES[section.role])}
-                      >
-                        {section.role}
-                      </Badge>
                       <Progress value={sectionCompletion.percentage}>
                         <ProgressLabel>
                           {sectionCompletion.uploaded} of{" "}
@@ -482,27 +627,27 @@ export function CourseDetail({
                       </Progress>
                     </CardContent>
                   </Card>
-              );
-            })}
-          </div>
-        ) : (
-          <Card className="rounded-lg">
-            <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
-              <div>
-                <h3 className="text-lg font-semibold">No sections yet</h3>
-                <p className="mt-2 max-w-md text-sm text-[var(--text-faded)]">
-                  Add the first section to start uploading section-level course
-                  files.
-                </p>
-              </div>
-              <Button onClick={openCreateSectionDialog}>
-                <Plus />
-                Add your first section
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-      </section>
+                );
+              })}
+            </div>
+          ) : (
+            <Card className="rounded-lg">
+              <CardContent className="flex flex-col items-center gap-4 py-10 text-center">
+                <div>
+                  <h3 className="text-lg font-semibold">No sections yet</h3>
+                  <p className="mt-2 max-w-md text-sm text-[var(--text-faded)]">
+                    Add the first section to start uploading section-level
+                    course files.
+                  </p>
+                </div>
+                <Button onClick={openCreateSectionDialog}>
+                  <Plus />
+                  Add your first section
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </section>
       ) : null}
 
       {courseDialogOpen ? (
