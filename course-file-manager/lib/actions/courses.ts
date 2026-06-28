@@ -1,11 +1,61 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag } from "next/cache";
 
+import {
+  COURSE_CACHE_TAG,
+  FILE_ENTRY_CACHE_TAG,
+  READ_CACHE_SECONDS,
+  SECTION_CACHE_TAG,
+} from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 import { COURSE_TYPES, type Course, type CourseInput } from "@/lib/types";
 
 type CourseRow = Course;
+
+const COURSE_SELECT =
+  "id, course_code, course_name, course_type, semester, coordinator_initial, created_at";
+
+const getCachedCourses = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from("courses")
+      .select(COURSE_SELECT)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Unable to load courses: ${error.message}`);
+    }
+
+    return (data ?? []) as CourseRow[];
+  },
+  ["cfm", "courses"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [COURSE_CACHE_TAG],
+  },
+);
+
+const getCachedCourseById = unstable_cache(
+  async (id: string) => {
+    const { data, error } = await supabase
+      .from("courses")
+      .select(COURSE_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Unable to load course: ${error.message}`);
+    }
+
+    return data as CourseRow | null;
+  },
+  ["cfm", "course-by-id"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [COURSE_CACHE_TAG],
+  },
+);
 
 function isCourseType(value: string): value is CourseInput["course_type"] {
   return COURSE_TYPES.includes(value as CourseInput["course_type"]);
@@ -47,18 +97,7 @@ function normalizeCourseInput(data: CourseInput): CourseInput {
 }
 
 export async function getCourses(): Promise<Course[]> {
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      "id, course_code, course_name, course_type, semester, coordinator_initial, created_at",
-    )
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(`Unable to load courses: ${error.message}`);
-  }
-
-  return (data ?? []) as CourseRow[];
+  return getCachedCourses();
 }
 
 export async function getCourseById(id: string): Promise<Course | null> {
@@ -66,19 +105,7 @@ export async function getCourseById(id: string): Promise<Course | null> {
     throw new Error("Course id is required.");
   }
 
-  const { data, error } = await supabase
-    .from("courses")
-    .select(
-      "id, course_code, course_name, course_type, semester, coordinator_initial, created_at",
-    )
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Unable to load course: ${error.message}`);
-  }
-
-  return data as CourseRow | null;
+  return getCachedCourseById(id);
 }
 
 export async function createCourse(data: CourseInput): Promise<Course> {
@@ -96,6 +123,7 @@ export async function createCourse(data: CourseInput): Promise<Course> {
     throw new Error(`Unable to create course: ${error.message}`);
   }
 
+  updateTag(COURSE_CACHE_TAG);
   revalidatePath("/");
 
   return course as CourseRow;
@@ -124,6 +152,7 @@ export async function updateCourse(
     throw new Error(`Unable to update course: ${error.message}`);
   }
 
+  updateTag(COURSE_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${id}`);
 
@@ -141,6 +170,9 @@ export async function deleteCourse(id: string): Promise<void> {
     throw new Error(`Unable to delete course: ${error.message}`);
   }
 
+  updateTag(COURSE_CACHE_TAG);
+  updateTag(SECTION_CACHE_TAG);
+  updateTag(FILE_ENTRY_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${id}`);
 }

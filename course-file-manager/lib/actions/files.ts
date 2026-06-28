@@ -1,7 +1,11 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag } from "next/cache";
 
+import {
+  FILE_ENTRY_CACHE_TAG,
+  READ_CACHE_SECONDS,
+} from "@/lib/cache";
 import { generateFilename } from "@/lib/naming";
 import { getSlotsForCourse, type SlotDefinition } from "@/lib/slots";
 import { supabase } from "@/lib/supabase";
@@ -12,6 +16,98 @@ const FILE_ENTRY_SELECT =
   "id, course_id, section_id, document_category, sub_category, quiz_number, original_filename, renamed_filename, storage_path, storage_url, uploaded_at";
 
 type FileEntryRow = FileEntry;
+
+const getCachedFileEntriesBySection = unstable_cache(
+  async (sectionId: string) => {
+    const { data, error } = await supabase
+      .from("file_entries")
+      .select(FILE_ENTRY_SELECT)
+      .eq("section_id", sectionId)
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Unable to load files: ${error.message}`);
+    }
+
+    return (data ?? []) as FileEntryRow[];
+  },
+  ["cfm", "file-entries-by-section"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [FILE_ENTRY_CACHE_TAG],
+  },
+);
+
+const getCachedFileEntriesByCourse = unstable_cache(
+  async (courseId: string, sectionId: string | null = null) => {
+    let query = supabase
+      .from("file_entries")
+      .select(FILE_ENTRY_SELECT)
+      .eq("course_id", courseId);
+
+    query =
+      sectionId === null
+        ? query.is("section_id", null)
+        : query.eq("section_id", sectionId);
+
+    const { data, error } = await query.order("uploaded_at", {
+      ascending: false,
+    });
+
+    if (error) {
+      throw new Error(`Unable to load files: ${error.message}`);
+    }
+
+    return (data ?? []) as FileEntryRow[];
+  },
+  ["cfm", "file-entries-by-course"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [FILE_ENTRY_CACHE_TAG],
+  },
+);
+
+const getCachedAllFileEntriesByCourse = unstable_cache(
+  async (courseId: string) => {
+    const { data, error } = await supabase
+      .from("file_entries")
+      .select(FILE_ENTRY_SELECT)
+      .eq("course_id", courseId)
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Unable to load files: ${error.message}`);
+    }
+
+    return (data ?? []) as FileEntryRow[];
+  },
+  ["cfm", "all-file-entries-by-course"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [FILE_ENTRY_CACHE_TAG],
+  },
+);
+
+const getCachedAllFileEntriesByCourseIds = unstable_cache(
+  async (courseIds: string[]) => {
+    const { data, error } = await supabase
+      .from("file_entries")
+      .select(FILE_ENTRY_SELECT)
+      .in("course_id", courseIds)
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      throw new Error(`Unable to load files: ${error.message}`);
+    }
+
+    return (data ?? []) as FileEntryRow[];
+  },
+  ["cfm", "all-file-entries-by-course-ids"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [FILE_ENTRY_CACHE_TAG],
+  },
+);
 
 function assertSafeStorageSegment(value: string, label: string) {
   if (
@@ -151,17 +247,7 @@ export async function getFileEntriesBySection(
     throw new Error("Section id is required.");
   }
 
-  const { data, error } = await supabase
-    .from("file_entries")
-    .select(FILE_ENTRY_SELECT)
-    .eq("section_id", sectionId)
-    .order("uploaded_at", { ascending: false });
-
-  if (error) {
-    throw new Error(`Unable to load files: ${error.message}`);
-  }
-
-  return (data ?? []) as FileEntryRow[];
+  return getCachedFileEntriesBySection(sectionId);
 }
 
 export async function getFileEntriesByCourse(
@@ -172,25 +258,7 @@ export async function getFileEntriesByCourse(
     throw new Error("Course id is required.");
   }
 
-  let query = supabase
-    .from("file_entries")
-    .select(FILE_ENTRY_SELECT)
-    .eq("course_id", courseId);
-
-  query =
-    sectionId === null
-      ? query.is("section_id", null)
-      : query.eq("section_id", sectionId);
-
-  const { data, error } = await query.order("uploaded_at", {
-    ascending: false,
-  });
-
-  if (error) {
-    throw new Error(`Unable to load files: ${error.message}`);
-  }
-
-  return (data ?? []) as FileEntryRow[];
+  return getCachedFileEntriesByCourse(courseId, sectionId);
 }
 
 export async function getAllFileEntriesByCourse(
@@ -200,17 +268,7 @@ export async function getAllFileEntriesByCourse(
     throw new Error("Course id is required.");
   }
 
-  const { data, error } = await supabase
-    .from("file_entries")
-    .select(FILE_ENTRY_SELECT)
-    .eq("course_id", courseId)
-    .order("uploaded_at", { ascending: false });
-
-  if (error) {
-    throw new Error(`Unable to load files: ${error.message}`);
-  }
-
-  return (data ?? []) as FileEntryRow[];
+  return getCachedAllFileEntriesByCourse(courseId);
 }
 
 export async function getAllFileEntriesByCourseIds(
@@ -222,17 +280,7 @@ export async function getAllFileEntriesByCourseIds(
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("file_entries")
-    .select(FILE_ENTRY_SELECT)
-    .in("course_id", uniqueCourseIds)
-    .order("uploaded_at", { ascending: false });
-
-  if (error) {
-    throw new Error(`Unable to load files: ${error.message}`);
-  }
-
-  return (data ?? []) as FileEntryRow[];
+  return getCachedAllFileEntriesByCourseIds(uniqueCourseIds);
 }
 
 export async function uploadFile(
@@ -310,6 +358,7 @@ export async function uploadFile(
     throw new Error(`Unable to save file record: ${error.message}`);
   }
 
+  updateTag(FILE_ENTRY_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${courseId}`);
   revalidatePath(`/courses/${courseId}/sections/${sectionId}`);
@@ -385,6 +434,7 @@ export async function uploadCourseFile(
     throw new Error(`Unable to save file record: ${error.message}`);
   }
 
+  updateTag(FILE_ENTRY_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${courseId}`);
 
@@ -431,6 +481,8 @@ export async function deleteFile(
   if (deleteError) {
     throw new Error(`Unable to delete file record: ${deleteError.message}`);
   }
+
+  updateTag(FILE_ENTRY_CACHE_TAG);
 
   if (entry.section_id) {
     revalidatePath(`/courses/${entry.course_id}/sections/${entry.section_id}`);

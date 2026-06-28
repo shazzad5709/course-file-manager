@@ -1,11 +1,81 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_cache, updateTag } from "next/cache";
 
+import {
+  READ_CACHE_SECONDS,
+  SECTION_CACHE_TAG,
+} from "@/lib/cache";
 import { supabase } from "@/lib/supabase";
 import { SECTION_ROLES, type Section, type SectionInput } from "@/lib/types";
 
 type SectionRow = Section;
+
+const SECTION_SELECT =
+  "id, course_id, section_label, teacher_initial, role, created_at";
+
+const getCachedSectionsByCourse = unstable_cache(
+  async (courseId: string) => {
+    const { data, error } = await supabase
+      .from("sections")
+      .select(SECTION_SELECT)
+      .eq("course_id", courseId)
+      .order("section_label", { ascending: true });
+
+    if (error) {
+      throw new Error(`Unable to load sections: ${error.message}`);
+    }
+
+    return (data ?? []) as SectionRow[];
+  },
+  ["cfm", "sections-by-course"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [SECTION_CACHE_TAG],
+  },
+);
+
+const getCachedSectionsByCourseIds = unstable_cache(
+  async (courseIds: string[]) => {
+    const { data, error } = await supabase
+      .from("sections")
+      .select(SECTION_SELECT)
+      .in("course_id", courseIds)
+      .order("section_label", { ascending: true });
+
+    if (error) {
+      throw new Error(`Unable to load sections: ${error.message}`);
+    }
+
+    return (data ?? []) as SectionRow[];
+  },
+  ["cfm", "sections-by-course-ids"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [SECTION_CACHE_TAG],
+  },
+);
+
+const getCachedSectionById = unstable_cache(
+  async (id: string) => {
+    const { data, error } = await supabase
+      .from("sections")
+      .select(SECTION_SELECT)
+      .eq("id", id)
+      .maybeSingle();
+
+    if (error) {
+      throw new Error(`Unable to load section: ${error.message}`);
+    }
+
+    return data as SectionRow | null;
+  },
+  ["cfm", "section-by-id"],
+  {
+    revalidate: READ_CACHE_SECONDS,
+    tags: [SECTION_CACHE_TAG],
+  },
+);
 
 function isSectionRole(value: string): value is SectionInput["role"] {
   return SECTION_ROLES.includes(value as SectionInput["role"]);
@@ -45,17 +115,7 @@ export async function getSectionsByCourse(courseId: string): Promise<Section[]> 
     throw new Error("Course id is required.");
   }
 
-  const { data, error } = await supabase
-    .from("sections")
-    .select("id, course_id, section_label, teacher_initial, role, created_at")
-    .eq("course_id", courseId)
-    .order("section_label", { ascending: true });
-
-  if (error) {
-    throw new Error(`Unable to load sections: ${error.message}`);
-  }
-
-  return (data ?? []) as SectionRow[];
+  return getCachedSectionsByCourse(courseId);
 }
 
 export async function getSectionsByCourseIds(
@@ -67,17 +127,7 @@ export async function getSectionsByCourseIds(
     return [];
   }
 
-  const { data, error } = await supabase
-    .from("sections")
-    .select("id, course_id, section_label, teacher_initial, role, created_at")
-    .in("course_id", uniqueCourseIds)
-    .order("section_label", { ascending: true });
-
-  if (error) {
-    throw new Error(`Unable to load sections: ${error.message}`);
-  }
-
-  return (data ?? []) as SectionRow[];
+  return getCachedSectionsByCourseIds(uniqueCourseIds);
 }
 
 export async function getSectionById(id: string): Promise<Section | null> {
@@ -85,17 +135,7 @@ export async function getSectionById(id: string): Promise<Section | null> {
     throw new Error("Section id is required.");
   }
 
-  const { data, error } = await supabase
-    .from("sections")
-    .select("id, course_id, section_label, teacher_initial, role, created_at")
-    .eq("id", id)
-    .maybeSingle();
-
-  if (error) {
-    throw new Error(`Unable to load section: ${error.message}`);
-  }
-
-  return data as SectionRow | null;
+  return getCachedSectionById(id);
 }
 
 export async function createSection(data: SectionInput): Promise<Section> {
@@ -111,6 +151,7 @@ export async function createSection(data: SectionInput): Promise<Section> {
     throw new Error(`Unable to create section: ${error.message}`);
   }
 
+  updateTag(SECTION_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${payload.course_id}`);
 
@@ -138,6 +179,7 @@ export async function updateSection(
     throw new Error(`Unable to update section: ${error.message}`);
   }
 
+  updateTag(SECTION_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${payload.course_id}`);
   revalidatePath(`/courses/${payload.course_id}/sections/${id}`);
@@ -160,6 +202,7 @@ export async function deleteSection(id: string, courseId: string): Promise<void>
     throw new Error(`Unable to delete section: ${error.message}`);
   }
 
+  updateTag(SECTION_CACHE_TAG);
   revalidatePath("/");
   revalidatePath(`/courses/${courseId}`);
 }
