@@ -213,6 +213,28 @@ export async function getAllFileEntriesByCourse(
   return (data ?? []) as FileEntryRow[];
 }
 
+export async function getAllFileEntriesByCourseIds(
+  courseIds: string[],
+): Promise<FileEntry[]> {
+  const uniqueCourseIds = Array.from(new Set(courseIds.filter(Boolean)));
+
+  if (uniqueCourseIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("file_entries")
+    .select(FILE_ENTRY_SELECT)
+    .in("course_id", uniqueCourseIds)
+    .order("uploaded_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`Unable to load files: ${error.message}`);
+  }
+
+  return (data ?? []) as FileEntryRow[];
+}
+
 export async function uploadFile(
   file: File,
   slot: SlotDefinition,

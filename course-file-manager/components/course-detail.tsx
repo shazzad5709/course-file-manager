@@ -227,6 +227,10 @@ export function CourseDetail({
     setSectionDialogOpen(true);
   }
 
+  function prefetchSection(sectionId: string) {
+    router.prefetch(`/courses/${course.id}/sections/${sectionId}`);
+  }
+
   async function confirmDeleteCourse() {
     try {
       await deleteCourse(course.id);
@@ -572,6 +576,8 @@ export function CourseDetail({
                         `/courses/${course.id}/sections/${section.id}`,
                       )
                     }
+                    onFocus={() => prefetchSection(section.id)}
+                    onMouseEnter={() => prefetchSection(section.id)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter" || event.key === " ") {
                         event.preventDefault();

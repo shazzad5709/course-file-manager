@@ -145,6 +145,10 @@ export function CourseDashboard({ courses }: CourseDashboardProps) {
     setDialogOpen(true);
   }
 
+  function prefetchCourse(courseId: string) {
+    router.prefetch(`/courses/${courseId}`);
+  }
+
   async function confirmDelete() {
     if (!deletingCourse) {
       return;
@@ -239,6 +243,8 @@ export function CourseDashboard({ courses }: CourseDashboardProps) {
               tabIndex={0}
               className="cursor-pointer rounded-lg transition hover:border-[var(--primary)] hover:ring-[var(--primary)]/30"
               onClick={() => router.push(`/courses/${course.id}`)}
+              onFocus={() => prefetchCourse(course.id)}
+              onMouseEnter={() => prefetchCourse(course.id)}
               onKeyDown={(event) => {
                 if (event.key === "Enter" || event.key === " ") {
                   event.preventDefault();

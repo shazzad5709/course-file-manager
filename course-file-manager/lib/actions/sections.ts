@@ -58,6 +58,28 @@ export async function getSectionsByCourse(courseId: string): Promise<Section[]> 
   return (data ?? []) as SectionRow[];
 }
 
+export async function getSectionsByCourseIds(
+  courseIds: string[],
+): Promise<Section[]> {
+  const uniqueCourseIds = Array.from(new Set(courseIds.filter(Boolean)));
+
+  if (uniqueCourseIds.length === 0) {
+    return [];
+  }
+
+  const { data, error } = await supabase
+    .from("sections")
+    .select("id, course_id, section_label, teacher_initial, role, created_at")
+    .in("course_id", uniqueCourseIds)
+    .order("section_label", { ascending: true });
+
+  if (error) {
+    throw new Error(`Unable to load sections: ${error.message}`);
+  }
+
+  return (data ?? []) as SectionRow[];
+}
+
 export async function getSectionById(id: string): Promise<Section | null> {
   if (!id) {
     throw new Error("Section id is required.");
