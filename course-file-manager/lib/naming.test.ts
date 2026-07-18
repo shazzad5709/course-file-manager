@@ -48,7 +48,28 @@ test("generates Theory Quiz 2 Question filename", () => {
       teacherInitial: "RK",
       semester: "Spring-26",
     }),
-    "SE232_43B_Quiz2_Question_RK_Spring-26.pdf",
+    "SE232_43B_Quiz2_Question_RK_Spring-26.docx",
+  );
+});
+
+test("generates Theory Quiz question default and Set B filenames", () => {
+  const params = {
+    courseCode: "SE216",
+    sectionLabel: "43H",
+    teacherInitial: "SHN",
+    semester: "Spring-26",
+  };
+
+  assert.equal(
+    generateFilename(findSlot("theory_quiz_1_question"), {
+      ...params,
+      quizQuestionSet: "A",
+    }),
+    "SE216_43H_Quiz1_Question_SHN_Spring-26.docx",
+  );
+  assert.equal(
+    generateFilename(findSlot("theory_quiz_1_question_set_b"), params),
+    "SE216_43H_Quiz1B_Question_SHN_Spring-26.docx",
   );
 });
 
@@ -86,7 +107,7 @@ test("generates Theory section support filenames", () => {
 
   assert.equal(
     generateFilename(findSlot("theory_gradesheet"), params),
-    "SE232_43A_Gradesheet_NT_Fall-25.xlsx",
+    "SE232_43A_Gradesheet_NT_Fall-25.pdf",
   );
   assert.equal(
     generateFilename(findSlot("theory_class_routine"), params),
@@ -99,6 +120,30 @@ test("generates Theory section support filenames", () => {
   assert.equal(
     generateFilename(findSlot("theory_teacher_profile"), params),
     "SE232_43A_TeacherProfile_NT_Fall-25.pdf",
+  );
+});
+
+test("generates Theory presentation filenames with uploaded extension", () => {
+  const params = {
+    courseCode: "SE232",
+    sectionLabel: "43A",
+    teacherInitial: "NT",
+    semester: "Fall-25",
+  };
+
+  assert.equal(
+    generateFilename(findSlot("theory_presentation_report_highest"), {
+      ...params,
+      extensionOverride: ".pdf",
+    }),
+    "SE232_43A_Presentation_NT_Highest_Fall-25.pdf",
+  );
+  assert.equal(
+    generateFilename(findSlot("theory_presentation_report_average"), {
+      ...params,
+      extensionOverride: ".pptx",
+    }),
+    "SE232_43A_Presentation_NT_Average_Fall-25.pptx",
   );
 });
 
@@ -167,7 +212,7 @@ test("every defined slot has a naming rule", () => {
         teacherInitial: "NT",
         semester: "Fall-25",
       }),
-      /^SE232_.+\.(pdf|xlsx|ppt)$/,
+      /^SE232_.+\.(pdf|docx|xlsx|pptx)$/,
     );
   }
 

@@ -9,22 +9,47 @@ import {
   THEORY_COURSE_SLOTS,
   THEORY_SECTION_SLOTS,
   getSlotsForCourse,
+  isRequiredSlot,
 } from "./slots";
 
 test("slot counts match requirements by course type and level", () => {
-  assert.equal(THEORY_SECTION_SLOTS.length, 32);
+  assert.equal(THEORY_SECTION_SLOTS.length, 35);
+  assert.equal(THEORY_SECTION_SLOTS.filter(isRequiredSlot).length, 32);
   assert.equal(THEORY_COURSE_SLOTS.length, 7);
   assert.equal(LAB_SECTION_SLOTS.length, 22);
   assert.equal(LAB_COURSE_SLOTS.length, 5);
   assert.equal(PROJECT_SECTION_SLOTS.length, 16);
   assert.equal(PROJECT_COURSE_SLOTS.length, 2);
 
-  assert.equal(getSlotsForCourse("Theory", "section").length, 32);
+  assert.equal(getSlotsForCourse("Theory", "section").length, 35);
+  assert.equal(
+    getSlotsForCourse("Theory", "section").filter(isRequiredSlot).length,
+    32,
+  );
   assert.equal(getSlotsForCourse("Theory", "course").length, 7);
   assert.equal(getSlotsForCourse("Lab", "section").length, 22);
   assert.equal(getSlotsForCourse("Lab", "course").length, 5);
   assert.equal(getSlotsForCourse("Project", "section").length, 16);
   assert.equal(getSlotsForCourse("Project", "course").length, 2);
+});
+
+test("theory quiz Set B question slots are optional", () => {
+  const setBSlots = THEORY_SECTION_SLOTS.filter((slot) =>
+    slot.category.endsWith("_question_set_b"),
+  );
+
+  assert.equal(setBSlots.length, 3);
+  assert.deepEqual(
+    setBSlots.map((slot) => ({
+      optional: slot.optional,
+      quizSet: slot.quizSet,
+    })),
+    [
+      { optional: true, quizSet: "B" },
+      { optional: true, quizSet: "B" },
+      { optional: true, quizSet: "B" },
+    ],
+  );
 });
 
 test("slot categories are globally unique", () => {

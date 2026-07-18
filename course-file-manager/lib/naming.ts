@@ -6,6 +6,8 @@ type FilenameParams = {
   teacherInitial?: string;
   coordinatorInitial?: string;
   semester: string;
+  quizQuestionSet?: "A" | "B" | null;
+  extensionOverride?: string;
 };
 
 function requireParam(value: string | undefined, name: string): string {
@@ -66,6 +68,10 @@ function withExtension(parts: string[], extension: string): string {
   return `${parts.join("_")}${extension}`;
 }
 
+function extensionFor(slot: SlotDefinition, params: FilenameParams) {
+  return params.extensionOverride ?? slot.expectedExtension;
+}
+
 export function generateFilename(
   slot: SlotDefinition,
   params: FilenameParams,
@@ -120,14 +126,19 @@ export function generateFilename(
     );
   }
 
-  if (category.startsWith("theory_quiz_") && category.endsWith("_question")) {
+  if (
+    category.startsWith("theory_quiz_") &&
+    (category.endsWith("_question") || category.endsWith("_question_set_b"))
+  ) {
     const values = sectionParts(slot, params);
+    const setLabel =
+      params.quizQuestionSet === "B" || slot.quizSet === "B" ? "B" : "";
 
     return withExtension(
       [
         values.courseCode,
         values.sectionLabel,
-        `Quiz${requireQuizNumber(slot)}`,
+        `Quiz${requireQuizNumber(slot)}${setLabel}`,
         "Question",
         values.teacherInitial,
         values.semester,
@@ -180,7 +191,7 @@ export function generateFilename(
         requireSubCategory(slot),
         values.semester,
       ],
-      slot.expectedExtension,
+      extensionFor(slot, params),
     );
   }
 

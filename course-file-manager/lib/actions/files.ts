@@ -6,6 +6,7 @@ import {
   FILE_ENTRY_CACHE_TAG,
   READ_CACHE_SECONDS,
 } from "@/lib/cache";
+import { getUploadExtensionOverride } from "@/lib/file-extensions";
 import { generateFilename } from "@/lib/naming";
 import { getSlotsForCourse, type SlotDefinition } from "@/lib/slots";
 import { supabase } from "@/lib/supabase";
@@ -157,6 +158,30 @@ function getSlotKey(slot: SlotDefinition) {
   return `${slot.category}:${slot.subCategory ?? ""}:${slot.quizNumber ?? ""}`;
 }
 
+type QuizQuestionInfo = {
+  quizNumber: 1 | 2 | 3;
+  setLabel: "A" | "B";
+  defaultCategory: string;
+  setBCategory: string;
+};
+
+function getQuizQuestionInfo(category: string): QuizQuestionInfo | null {
+  const match = category.match(/^theory_quiz_([123])_question(_set_b)?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const quizNumber = Number(match[1]) as 1 | 2 | 3;
+
+  return {
+    quizNumber,
+    setLabel: match[2] ? "B" : "A",
+    defaultCategory: `theory_quiz_${quizNumber}_question`,
+    setBCategory: `theory_quiz_${quizNumber}_question_set_b`,
+  };
+}
+
 function getCanonicalSectionSlot(course: Course, slot: SlotDefinition) {
   const canonicalSlot = getSlotsForCourse(course.course_type, "section").find(
     (candidate) => getSlotKey(candidate) === getSlotKey(slot),
@@ -240,6 +265,109 @@ async function getTrustedUploadContext(courseId: string, sectionId: string) {
   };
 }
 
+async function getQuizQuestionEntries(
+  sectionId: string,
+  quizInfo: QuizQuestionInfo,
+) {
+  const { data, error } = await supabase
+    .from("file_entries")
+    .select(FILE_ENTRY_SELECT)
+    .eq("section_id", sectionId)
+    .in("document_category", [
+      quizInfo.defaultCategory,
+      quizInfo.setBCategory,
+    ]);
+
+  if (error) {
+    throw new Error(`Unable to load quiz question files: ${error.message}`);
+  }
+
+  return (data ?? []) as FileEntryRow[];
+}
+
+function getSectionStoragePath(
+  courseId: string,
+  sectionId: string,
+  renamedFilename: string,
+) {
+  assertSafeStorageSegment(courseId, "Course id");
+  assertSafeStorageSegment(sectionId, "Section id");
+  assertSafeStorageSegment(renamedFilename, "Renamed filename");
+
+  return `${courseId}/${sectionId}/${renamedFilename}`;
+}
+
+function isStorageConflict(error: {
+  message?: string;
+  statusCode?: string | number;
+}) {
+  return (
+    String(error.statusCode) === "409" ||
+    error.message?.toLowerCase().includes("already exists") ||
+    false
+  );
+}
+
+async function getFileEntryByStoragePath(storagePath: string) {
+  const { data, error } = await supabase
+    .from("file_entries")
+    .select(FILE_ENTRY_SELECT)
+    .eq("storage_path", storagePath)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Unable to load existing file record: ${error.message}`);
+  }
+
+  return data as FileEntryRow | null;
+}
+
+async function uploadSectionObject(
+  storagePath: string,
+  file: File,
+  allowOrphanRecovery: boolean,
+) {
+  const uploadResult = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+
+  if (!uploadResult.error) {
+    return;
+  }
+
+  if (!isStorageConflict(uploadResult.error)) {
+    throw new Error(`Unable to upload file: ${uploadResult.error.message}`);
+  }
+
+  const existingEntry = await getFileEntryByStoragePath(storagePath);
+
+  if (existingEntry) {
+    throw new Error("This slot already has an uploaded file. Refresh the page.");
+  }
+
+  if (!allowOrphanRecovery) {
+    throw new Error(`Unable to upload file: ${uploadResult.error.message}`);
+  }
+
+  await supabase.storage.from(STORAGE_BUCKET).remove([storagePath]);
+
+  const retryResult = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .upload(storagePath, file, {
+      cacheControl: "3600",
+      upsert: false,
+      contentType: file.type || undefined,
+    });
+
+  if (retryResult.error) {
+    throw new Error(`Unable to upload file: ${retryResult.error.message}`);
+  }
+}
+
 export async function getFileEntriesBySection(
   sectionId: string,
 ): Promise<FileEntry[]> {
@@ -309,29 +437,47 @@ export async function uploadFile(
 
   assertMatchingContext(courseId, sectionId, course, section);
 
+  const quizInfo = getQuizQuestionInfo(canonicalSlot.category);
+  const quizEntries = quizInfo
+    ? await getQuizQuestionEntries(sectionId, quizInfo)
+    : [];
+  const defaultQuizQuestionEntry =
+    quizInfo?.setLabel === "B"
+      ? quizEntries.find(
+          (entry) => entry.document_category === quizInfo.defaultCategory,
+        )
+      : null;
+
+  if (quizInfo?.setLabel === "B" && !defaultQuizQuestionEntry) {
+    throw new Error("Upload Set A before Set B.");
+  }
+
+  if (
+    quizInfo?.setLabel === "B" &&
+    quizEntries.some(
+      (entry) => entry.document_category === quizInfo.setBCategory,
+    )
+  ) {
+    throw new Error("This slot already has an uploaded file. Refresh the page.");
+  }
+
+  const quizQuestionSet = quizInfo?.setLabel === "B" ? "B" : null;
   const renamedFilename = generateFilename(canonicalSlot, {
     courseCode: course.course_code,
     sectionLabel: section.section_label,
     teacherInitial: section.teacher_initial,
     semester: course.semester,
+    quizQuestionSet,
+    extensionOverride: getUploadExtensionOverride(canonicalSlot, file.name),
   });
 
-  assertSafeStorageSegment(courseId, "Course id");
-  assertSafeStorageSegment(sectionId, "Section id");
-  assertSafeStorageSegment(renamedFilename, "Renamed filename");
+  const storagePath = getSectionStoragePath(
+    courseId,
+    sectionId,
+    renamedFilename,
+  );
 
-  const storagePath = `${courseId}/${sectionId}/${renamedFilename}`;
-  const uploadResult = await supabase.storage
-    .from(STORAGE_BUCKET)
-    .upload(storagePath, file, {
-      cacheControl: "3600",
-      upsert: false,
-      contentType: file.type || undefined,
-    });
-
-  if (uploadResult.error) {
-    throw new Error(`Unable to upload file: ${uploadResult.error.message}`);
-  }
+  await uploadSectionObject(storagePath, file, true);
 
   const {
     data: { publicUrl },
@@ -453,7 +599,7 @@ export async function deleteFile(
 
   const { data: entry, error: entryError } = await supabase
     .from("file_entries")
-    .select("course_id, section_id, storage_path")
+    .select(FILE_ENTRY_SELECT)
     .eq("id", fileEntryId)
     .single();
 

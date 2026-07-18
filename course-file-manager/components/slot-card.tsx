@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Check, Download, Loader2, Trash2, UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 
+import { getAcceptedExtensions } from "@/lib/file-extensions";
 import type { SlotDefinition } from "@/lib/slots";
 import type { FileEntry } from "@/lib/types";
 import { downloadBlob } from "@/lib/zip";
@@ -24,6 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type SlotCardProps = {
   slot: SlotDefinition;
   fileEntry: FileEntry | null;
+  disabledReason?: string;
   onUpload: (slot: SlotDefinition, file: File) => Promise<FileEntry>;
   onDelete: (fileEntry: FileEntry) => Promise<void>;
 };
@@ -31,6 +33,7 @@ type SlotCardProps = {
 export function SlotCard({
   slot,
   fileEntry,
+  disabledReason,
   onUpload,
   onDelete,
 }: SlotCardProps) {
@@ -43,16 +46,23 @@ export function SlotCard({
   const isOptimisticEntry =
     Boolean(fileEntry) &&
     (!fileEntry?.storage_url || fileEntry.id.startsWith("optimistic:"));
+  const isUploadDisabled = Boolean(disabledReason);
 
   async function uploadSelectedFile(file: File | undefined) {
-    if (!file || isUploading) {
+    if (!file || isUploading || isUploadDisabled) {
       return;
     }
 
-    const expectedExtension = slot.expectedExtension.toLowerCase();
+    const acceptedExtensions = getAcceptedExtensions(slot);
 
-    if (!file.name.toLowerCase().endsWith(expectedExtension)) {
-      toast.warning(`Expected ${expectedExtension}, uploading anyway.`);
+    if (
+      !acceptedExtensions.some((extension) =>
+        file.name.toLowerCase().endsWith(extension),
+      )
+    ) {
+      toast.warning(
+        `Expected ${acceptedExtensions.join(" or ")}, uploading anyway.`,
+      );
     }
 
     setIsUploading(true);
@@ -117,7 +127,12 @@ export function SlotCard({
           <CardTitle className="text-sm font-medium leading-snug">
             {slot.label}
           </CardTitle>
-          <Badge variant="outline">{slot.expectedExtension}</Badge>
+          <div className="flex shrink-0 flex-wrap justify-end gap-2">
+            {slot.optional ? <Badge variant="outline">Optional</Badge> : null}
+            <Badge variant="outline">
+              {getAcceptedExtensions(slot).join(" / ")}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -179,15 +194,21 @@ export function SlotCard({
             onClick={() => inputRef.current?.click()}
             onDragOver={(event) => {
               event.preventDefault();
+              if (isUploadDisabled) {
+                return;
+              }
               setIsDragging(true);
             }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={(event) => {
               event.preventDefault();
               setIsDragging(false);
+              if (isUploadDisabled) {
+                return;
+              }
               void uploadSelectedFile(event.dataTransfer.files[0]);
             }}
-            disabled={isUploading}
+            disabled={isUploading || isUploadDisabled}
           >
             {isUploading ? (
               <Loader2 className="size-5 animate-spin text-primary" />
@@ -195,16 +216,21 @@ export function SlotCard({
               <UploadCloud className="size-5 text-[var(--text-faded)]" />
             )}
             <span className="text-sm font-medium">
-              {isUploading ? "Uploading..." : "Drop file or browse"}
+              {isUploading
+                ? "Uploading..."
+                : disabledReason
+                  ? disabledReason
+                  : "Drop file or browse"}
             </span>
             <span className="text-xs text-[var(--text-faded)]">
-              Expected {slot.expectedExtension}
+              Expected {getAcceptedExtensions(slot).join(" or ")}
             </span>
             <input
               ref={inputRef}
               type="file"
               className="hidden"
-              accept={slot.expectedExtension}
+              accept={getAcceptedExtensions(slot).join(",")}
+              disabled={isUploading || isUploadDisabled}
               onChange={(event) =>
                 void uploadSelectedFile(event.target.files?.[0])
               }

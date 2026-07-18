@@ -10,6 +10,8 @@ export type SlotDefinition = {
   quizNumber: 1 | 2 | 3 | null;
   level: SlotLevel;
   expectedExtension: string;
+  optional?: boolean;
+  quizSet?: "B" | null;
 };
 
 const REPRESENTATIVE_CATEGORIES: RepresentativeCategory[] = [
@@ -39,6 +41,7 @@ function sectionSlot(
   label: string,
   expectedExtension: string,
   quizNumber: 1 | 2 | 3 | null = null,
+  options: Pick<SlotDefinition, "optional" | "quizSet"> = {},
 ): SlotDefinition {
   return {
     category,
@@ -47,6 +50,7 @@ function sectionSlot(
     quizNumber,
     level: "section",
     expectedExtension,
+    ...options,
   };
 }
 
@@ -74,21 +78,42 @@ export const THEORY_SECTION_SLOTS: SlotDefinition[] = [
     ".pdf",
     1,
   ),
-  sectionSlot("theory_quiz_1_question", "Quiz 1 Question", ".pdf", 1),
+  sectionSlot("theory_quiz_1_question", "Quiz 1 Question - Set A", ".docx", 1),
+  sectionSlot(
+    "theory_quiz_1_question_set_b",
+    "Quiz 1 Question - Set B",
+    ".docx",
+    1,
+    { optional: true, quizSet: "B" },
+  ),
   ...representativeSlots(
     "theory_quiz_2_script",
     "Quiz 2 Script",
     ".pdf",
     2,
   ),
-  sectionSlot("theory_quiz_2_question", "Quiz 2 Question", ".pdf", 2),
+  sectionSlot("theory_quiz_2_question", "Quiz 2 Question - Set A", ".docx", 2),
+  sectionSlot(
+    "theory_quiz_2_question_set_b",
+    "Quiz 2 Question - Set B",
+    ".docx",
+    2,
+    { optional: true, quizSet: "B" },
+  ),
   ...representativeSlots(
     "theory_quiz_3_script",
     "Quiz 3 Script",
     ".pdf",
     3,
   ),
-  sectionSlot("theory_quiz_3_question", "Quiz 3 Question", ".pdf", 3),
+  sectionSlot("theory_quiz_3_question", "Quiz 3 Question - Set A", ".docx", 3),
+  sectionSlot(
+    "theory_quiz_3_question_set_b",
+    "Quiz 3 Question - Set B",
+    ".docx",
+    3,
+    { optional: true, quizSet: "B" },
+  ),
   ...representativeSlots(
     "theory_assignment_report",
     "Assignment Report",
@@ -102,14 +127,14 @@ export const THEORY_SECTION_SLOTS: SlotDefinition[] = [
   ...representativeSlots(
     "theory_presentation_report",
     "Presentation Slide",
-    ".ppt",
+    ".pptx",
   ),
   sectionSlot(
     "theory_presentation_rubrics",
     "Presentation Rubrics",
     ".xlsx",
   ),
-  sectionSlot("theory_gradesheet", "Gradesheet", ".xlsx"),
+  sectionSlot("theory_gradesheet", "Gradesheet", ".pdf"),
   sectionSlot("theory_attendance_report", "Attendance Report", ".pdf"),
   sectionSlot("theory_class_routine", "Class Routine", ".pdf"),
   sectionSlot("theory_lecture_sample", "Lecture Sample", ".pdf"),
@@ -229,4 +254,8 @@ export function getSlotsForCourse(
   }
 
   return level === "section" ? PROJECT_SECTION_SLOTS : PROJECT_COURSE_SLOTS;
+}
+
+export function isRequiredSlot(slot: SlotDefinition) {
+  return !slot.optional;
 }

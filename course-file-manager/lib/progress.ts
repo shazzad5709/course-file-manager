@@ -1,5 +1,9 @@
-import { getSlotsForCourse, type SlotDefinition } from "@/lib/slots";
-import type { Course, FileEntry, Section } from "@/lib/types";
+import {
+  getSlotsForCourse,
+  isRequiredSlot,
+  type SlotDefinition,
+} from "./slots";
+import type { Course, FileEntry, Section } from "./types";
 
 export type CompletionSummary = {
   uploaded: number;
@@ -30,13 +34,14 @@ export function calculateSlotCompletion(
   slots: SlotDefinition[],
   fileEntries: FileEntry[],
 ): CompletionSummary {
-  const slotKeys = new Set(slots.map(getSlotKey));
+  const requiredSlots = slots.filter(isRequiredSlot);
+  const slotKeys = new Set(requiredSlots.map(getSlotKey));
   const uploaded = new Set(
     fileEntries
       .filter((entry) => slotKeys.has(getFileEntryKey(entry)))
       .map(getFileEntryKey),
   ).size;
-  const required = slots.length;
+  const required = requiredSlots.length;
 
   return {
     uploaded,
@@ -56,19 +61,22 @@ export function calculateCourseCompletion(
     : [];
 
   let uploaded = 0;
-  let required = courseSlots.length;
+  let required = 0;
 
-  uploaded += calculateSlotCompletion(
+  const courseCompletion = calculateSlotCompletion(
     courseSlots,
     fileEntries.filter((entry) => entry.section_id === null),
-  ).uploaded;
+  );
+  uploaded += courseCompletion.uploaded;
+  required += courseCompletion.required;
 
   for (const section of sections) {
-    required += sectionSlots.length;
-    uploaded += calculateSlotCompletion(
+    const sectionCompletion = calculateSlotCompletion(
       sectionSlots,
       fileEntries.filter((entry) => entry.section_id === section.id),
-    ).uploaded;
+    );
+    required += sectionCompletion.required;
+    uploaded += sectionCompletion.uploaded;
   }
 
   return {

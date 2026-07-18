@@ -4,9 +4,14 @@ import { useMemo, useState } from "react";
 import { Check, FileArchive } from "lucide-react";
 import { toast } from "sonner";
 
-import { deleteFile, uploadFile } from "@/lib/actions/files";
+import {
+  deleteFile,
+  getFileEntriesBySection,
+  uploadFile,
+} from "@/lib/actions/files";
+import { getUploadExtensionOverride } from "@/lib/file-extensions";
 import { generateFilename } from "@/lib/naming";
-import type { SlotDefinition } from "@/lib/slots";
+import { isRequiredSlot, type SlotDefinition } from "@/lib/slots";
 import type { Course, FileEntry, Section } from "@/lib/types";
 import {
   buildSectionZip,
@@ -77,6 +82,44 @@ function getFileEntryKey(fileEntry: FileEntry) {
   }`;
 }
 
+function getDefaultQuizQuestionSlotKey(slot: SlotDefinition) {
+  const match = slot.category.match(/^theory_quiz_([123])_question_set_b$/);
+
+  if (!match) {
+    return null;
+  }
+
+  return `theory_quiz_${match[1]}_question::${slot.quizNumber ?? ""}`;
+}
+
+function isQuizQuestionSlot(slot: SlotDefinition) {
+  return (
+    slot.category.startsWith("theory_quiz_") &&
+    (slot.category.endsWith("_question") ||
+      slot.category.endsWith("_question_set_b"))
+  );
+}
+
+function isQuizGroup(group: SlotGroup) {
+  return group.title.startsWith("Quiz ");
+}
+
+function getQuizQuestionSetForPreview(
+  slot: SlotDefinition,
+) {
+  const match = slot.category.match(/^theory_quiz_([123])_question(_set_b)?$/);
+
+  if (!match) {
+    return undefined;
+  }
+
+  if (match[2]) {
+    return "B";
+  }
+
+  return null;
+}
+
 function getGroupTitle(slot: SlotDefinition) {
   const category = slot.category;
 
@@ -142,7 +185,9 @@ function isGroupComplete(
   group: SlotGroup,
   entryBySlotKey: Map<string, FileEntry>,
 ) {
-  return group.slots.every((slot) => entryBySlotKey.has(getSlotKey(slot)));
+  const requiredSlots = group.slots.filter(isRequiredSlot);
+
+  return requiredSlots.every((slot) => entryBySlotKey.has(getSlotKey(slot)));
 }
 
 function isCompactGroup(group: SlotGroup) {
@@ -157,8 +202,13 @@ function getGroupUploadedCount(
   group: SlotGroup,
   entryBySlotKey: Map<string, FileEntry>,
 ) {
-  return group.slots.filter((slot) => entryBySlotKey.has(getSlotKey(slot)))
-    .length;
+  return group.slots
+    .filter(isRequiredSlot)
+    .filter((slot) => entryBySlotKey.has(getSlotKey(slot))).length;
+}
+
+function getGroupRequiredCount(group: SlotGroup) {
+  return group.slots.filter(isRequiredSlot).length;
 }
 
 function getSectionPeople(section: Section) {
@@ -174,18 +224,53 @@ function getSectionPeople(section: Section) {
 function renderGroupSlots(
   group: SlotGroup,
   displayEntryBySlotKey: Map<string, FileEntry>,
+  completedEntryBySlotKey: Map<string, FileEntry>,
   handleUpload: (slot: SlotDefinition, file: File) => Promise<FileEntry>,
   handleDelete: (fileEntry: FileEntry) => Promise<void>,
 ) {
-  return group.slots.map((slot) => (
-    <SlotCard
-      key={getSlotKey(slot)}
-      slot={slot}
-      fileEntry={displayEntryBySlotKey.get(getSlotKey(slot)) ?? null}
-      onUpload={handleUpload}
-      onDelete={handleDelete}
-    />
-  ));
+  const nodes = [];
+  const scriptSlotsBeforeQuestions = group.slots.filter(
+    (slot) => !isQuizQuestionSlot(slot),
+  ).length;
+  let addedQuizQuestionSpacer = false;
+
+  for (const slot of group.slots) {
+    if (
+      isQuizGroup(group) &&
+      isQuizQuestionSlot(slot) &&
+      scriptSlotsBeforeQuestions % 2 === 1 &&
+      !addedQuizQuestionSpacer
+    ) {
+      nodes.push(
+        <div
+          key={`${group.title}-question-spacer`}
+          className="hidden lg:block"
+          aria-hidden="true"
+        />,
+      );
+      addedQuizQuestionSpacer = true;
+    }
+
+    const defaultQuizQuestionSlotKey = getDefaultQuizQuestionSlotKey(slot);
+    const disabledReason =
+      defaultQuizQuestionSlotKey &&
+      !completedEntryBySlotKey.has(defaultQuizQuestionSlotKey)
+        ? "Upload Set A first"
+        : undefined;
+
+    nodes.push(
+      <SlotCard
+        key={getSlotKey(slot)}
+        slot={slot}
+        fileEntry={displayEntryBySlotKey.get(getSlotKey(slot)) ?? null}
+        disabledReason={disabledReason}
+        onUpload={handleUpload}
+        onDelete={handleDelete}
+      />,
+    );
+  }
+
+  return nodes;
 }
 
 export function SectionUploadPage({
@@ -217,9 +302,11 @@ export function SectionUploadPage({
     return map;
   }, [entries]);
   const uploadedCount = slots.filter((slot) =>
-    completedEntryBySlotKey.has(getSlotKey(slot)),
+    isRequiredSlot(slot) && completedEntryBySlotKey.has(getSlotKey(slot)),
   ).length;
-  const progress = slots.length > 0 ? (uploadedCount / slots.length) * 100 : 0;
+  const requiredSlotCount = slots.filter(isRequiredSlot).length;
+  const progress =
+    requiredSlotCount > 0 ? (uploadedCount / requiredSlotCount) * 100 : 0;
   const groupedSlots = useMemo(() => groupSlots(slots), [slots]);
   const isProjectCourse = course.course_type === "Project";
   const regularGroups = groupedSlots.filter(
@@ -283,6 +370,8 @@ export function SectionUploadPage({
         sectionLabel: section.section_label,
         teacherInitial: section.teacher_initial,
         semester: course.semester,
+        quizQuestionSet: getQuizQuestionSetForPreview(slot),
+        extensionOverride: getUploadExtensionOverride(slot, file.name),
       }),
       storage_path: "",
       storage_url: "",
@@ -304,26 +393,26 @@ export function SectionUploadPage({
         section,
       );
 
+      const freshEntries = await getFileEntriesBySection(section.id);
       toast.success("File uploaded.");
-      setEntries((current) => [
-        uploadedEntry,
-        ...current.filter((entry) => getFileEntryKey(entry) !== slotKey),
-      ]);
+      setEntries(freshEntries);
 
       return uploadedEntry;
     } catch (error) {
-      setEntries((current) =>
-        current.filter((entry) => entry.id !== optimisticEntry.id),
-      );
+      try {
+        setEntries(await getFileEntriesBySection(section.id));
+      } catch {
+        setEntries((current) =>
+          current.filter((entry) => entry.id !== optimisticEntry.id),
+        );
+      }
       throw error;
     }
   }
 
   async function handleDelete(fileEntry: FileEntry) {
     await deleteFile(fileEntry.id, fileEntry.storage_path);
-    setEntries((current) =>
-      current.filter((entry) => entry.id !== fileEntry.id),
-    );
+    setEntries(await getFileEntriesBySection(section.id));
   }
 
   async function handleExportSectionZip() {
@@ -390,7 +479,7 @@ export function SectionUploadPage({
         <div className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4">
           <Progress value={progress}>
             <ProgressLabel>
-              {uploadedCount} of {slots.length} required files uploaded
+              {uploadedCount} of {requiredSlotCount} required files uploaded
             </ProgressLabel>
             <ProgressValue />
           </Progress>
@@ -422,6 +511,7 @@ export function SectionUploadPage({
                   {renderGroupSlots(
                     group,
                     displayEntryBySlotKey,
+                    completedEntryBySlotKey,
                     handleUpload,
                     handleDelete,
                   )}
@@ -447,6 +537,7 @@ export function SectionUploadPage({
                   {renderGroupSlots(
                     group,
                     displayEntryBySlotKey,
+                    completedEntryBySlotKey,
                     handleUpload,
                     handleDelete,
                   )}
@@ -470,6 +561,7 @@ export function SectionUploadPage({
                   renderGroupSlots(
                     group,
                     displayEntryBySlotKey,
+                    completedEntryBySlotKey,
                     handleUpload,
                     handleDelete,
                   ),
@@ -492,7 +584,8 @@ export function SectionUploadPage({
                 group,
                 completedEntryBySlotKey,
               );
-              const isComplete = groupUploadedCount === group.slots.length;
+              const groupRequiredCount = getGroupRequiredCount(group);
+              const isComplete = groupUploadedCount === groupRequiredCount;
 
               return (
                 <li key={group.title}>
@@ -517,7 +610,7 @@ export function SectionUploadPage({
                         {group.title}
                       </p>
                       <p className="text-xs text-[var(--text-faded)]">
-                        {groupUploadedCount}/{group.slots.length}
+                        {groupUploadedCount}/{groupRequiredCount}
                       </p>
                     </div>
                   </div>

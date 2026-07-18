@@ -38,17 +38,25 @@ test("groups theory section files into nested export folders", () => {
   assert.equal(
     getSectionEntryRelativePath({
       document_category: "theory_quiz_2_question",
-      renamed_filename: "SE232_43A_Quiz2_Question_NT_Fall-25.pdf",
+      renamed_filename: "SE232_43A_Quiz2_Question_NT_Fall-25.docx",
     }),
-    "Quiz/Quiz 2/SE232_43A_Quiz2_Question_NT_Fall-25.pdf",
+    "Quiz/Quiz 2/SE232_43A_Quiz2_Question_NT_Fall-25.docx",
+  );
+
+  assert.equal(
+    getSectionEntryRelativePath({
+      document_category: "theory_quiz_2_question_set_b",
+      renamed_filename: "SE232_43A_Quiz2B_Question_NT_Fall-25.docx",
+    }),
+    "Quiz/Quiz 2/SE232_43A_Quiz2B_Question_NT_Fall-25.docx",
   );
 
   assert.equal(
     getSectionEntryRelativePath({
       document_category: "theory_gradesheet",
-      renamed_filename: "SE232_43A_Gradesheet_NT_Fall-25.xlsx",
+      renamed_filename: "SE232_43A_Gradesheet_NT_Fall-25.pdf",
     }),
-    "SE232_43A_Gradesheet_NT_Fall-25.xlsx",
+    "SE232_43A_Gradesheet_NT_Fall-25.pdf",
   );
 
   assert.equal(
