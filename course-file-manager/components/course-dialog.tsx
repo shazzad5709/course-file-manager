@@ -191,7 +191,10 @@ export function CourseDialog({
                 id="coordinator-initial"
                 value={form.coordinator_initial}
                 onChange={(event) =>
-                  updateField("coordinator_initial", event.target.value)
+                  updateField(
+                    "coordinator_initial",
+                    event.target.value.toUpperCase(),
+                  )
                 }
                 placeholder="NT"
                 required

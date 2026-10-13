@@ -437,114 +437,6 @@ export function CourseDetail({
         </Card>
       ) : null}
 
-      {!isProjectCourse && showCourseLevelDocuments ? (
-        <section className="space-y-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-xl font-semibold">
-                Course-level Documents
-              </h2>
-              <p className="mt-1 text-sm text-[var(--text-faded)]">
-                Module Leader files stored under this course.
-              </p>
-            </div>
-          </div>
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4">
-            <Progress value={courseLevelCompletion.percentage}>
-              <ProgressLabel>
-                {courseLevelCompletion.uploaded} of{" "}
-                {courseLevelCompletion.required} course-level files uploaded
-              </ProgressLabel>
-              <ProgressValue />
-            </Progress>
-          </div>
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
-            <div className="space-y-8">
-              {courseLevelGroups.map((group) => {
-                const isComplete = isCourseGroupComplete(
-                  group,
-                  completedCourseEntryBySlotKey,
-                );
-
-                return (
-                  <section key={group.title} className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold">{group.title}</h3>
-                      {isComplete ? (
-                        <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
-                          <Check className="size-3" />
-                        </span>
-                      ) : null}
-                    </div>
-                    <div className="grid gap-4 lg:grid-cols-2">
-                      {group.slots.map((slot) => (
-                        <SlotCard
-                          key={getSlotKey(slot)}
-                          slot={slot}
-                          fileEntry={
-                            courseEntryBySlotKey.get(getSlotKey(slot)) ?? null
-                          }
-                          onUpload={handleCourseFileUpload}
-                          onDelete={handleCourseFileDelete}
-                        />
-                      ))}
-                    </div>
-                  </section>
-                );
-              })}
-            </div>
-
-            <aside className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4 xl:sticky xl:top-20">
-              <div>
-                <h3 className="text-sm font-semibold">Upload checklist</h3>
-                <p className="mt-1 text-xs text-[var(--text-faded)]">
-                  Track which course-level sections are complete.
-                </p>
-              </div>
-              <ul className="mt-4 space-y-2">
-                {courseLevelGroups.map((group) => {
-                  const groupUploadedCount = getCourseGroupUploadedCount(
-                    group,
-                    completedCourseEntryBySlotKey,
-                  );
-                  const isComplete = groupUploadedCount === group.slots.length;
-
-                  return (
-                    <li key={group.title}>
-                      <div className="flex items-start gap-2 rounded-md px-2 py-1.5">
-                        <span
-                          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
-                            isComplete
-                              ? "border-emerald-500 bg-emerald-500 text-white"
-                              : "border-[var(--border)] text-[var(--text-faded)]"
-                          }`}
-                        >
-                          {isComplete ? <Check className="size-3" /> : null}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p
-                            className={`text-xs font-medium ${
-                              isComplete
-                                ? "text-[var(--text-faded)]"
-                                : "text-[var(--text-default)]"
-                            }`}
-                          >
-                            {group.title}
-                          </p>
-                          <p className="text-xs text-[var(--text-faded)]">
-                            {groupUploadedCount}/{group.slots.length}
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            </aside>
-          </div>
-        </section>
-      ) : null}
-
       {!isProjectCourse ? (
         <section className="space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -653,6 +545,114 @@ export function CourseDetail({
               </CardContent>
             </Card>
           )}
+        </section>
+      ) : null}
+
+      {!isProjectCourse && showCourseLevelDocuments ? (
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">
+                Course-level Documents
+              </h2>
+              <p className="mt-1 text-sm text-[var(--text-faded)]">
+                Module Leader files stored under this course.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4">
+            <Progress value={courseLevelCompletion.percentage}>
+              <ProgressLabel>
+                {courseLevelCompletion.uploaded} of{" "}
+                {courseLevelCompletion.required} course-level files uploaded
+              </ProgressLabel>
+              <ProgressValue />
+            </Progress>
+          </div>
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] xl:items-start">
+            <div className="space-y-8">
+              {courseLevelGroups.map((group) => {
+                const isComplete = isCourseGroupComplete(
+                  group,
+                  completedCourseEntryBySlotKey,
+                );
+
+                return (
+                  <section key={group.title} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-lg font-semibold">{group.title}</h3>
+                      {isComplete ? (
+                        <span className="flex size-5 items-center justify-center rounded-full bg-emerald-500 text-white">
+                          <Check className="size-3" />
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {group.slots.map((slot) => (
+                        <SlotCard
+                          key={getSlotKey(slot)}
+                          slot={slot}
+                          fileEntry={
+                            courseEntryBySlotKey.get(getSlotKey(slot)) ?? null
+                          }
+                          onUpload={handleCourseFileUpload}
+                          onDelete={handleCourseFileDelete}
+                        />
+                      ))}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <aside className="rounded-lg border border-[var(--border)] bg-[var(--elevated)] p-4 xl:sticky xl:top-20">
+              <div>
+                <h3 className="text-sm font-semibold">Upload checklist</h3>
+                <p className="mt-1 text-xs text-[var(--text-faded)]">
+                  Track which course-level sections are complete.
+                </p>
+              </div>
+              <ul className="mt-4 space-y-2">
+                {courseLevelGroups.map((group) => {
+                  const groupUploadedCount = getCourseGroupUploadedCount(
+                    group,
+                    completedCourseEntryBySlotKey,
+                  );
+                  const isComplete = groupUploadedCount === group.slots.length;
+
+                  return (
+                    <li key={group.title}>
+                      <div className="flex items-start gap-2 rounded-md px-2 py-1.5">
+                        <span
+                          className={`mt-0.5 flex size-4 shrink-0 items-center justify-center rounded-full border text-[10px] ${
+                            isComplete
+                              ? "border-emerald-500 bg-emerald-500 text-white"
+                              : "border-[var(--border)] text-[var(--text-faded)]"
+                          }`}
+                        >
+                          {isComplete ? <Check className="size-3" /> : null}
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p
+                            className={`text-xs font-medium ${
+                              isComplete
+                                ? "text-[var(--text-faded)]"
+                                : "text-[var(--text-default)]"
+                            }`}
+                          >
+                            {group.title}
+                          </p>
+                          <p className="text-xs text-[var(--text-faded)]">
+                            {groupUploadedCount}/{group.slots.length}
+                          </p>
+                        </div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </aside>
+          </div>
         </section>
       ) : null}
 

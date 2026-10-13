@@ -10,7 +10,10 @@ import {
   uploadFile,
 } from "@/lib/actions/files";
 import { getUploadExtensionOverride } from "@/lib/file-extensions";
-import { generateFilename } from "@/lib/naming";
+import {
+  generateFilename,
+  getAlreadyFormattedQuizQuestionFilename,
+} from "@/lib/naming";
 import { isRequiredSlot, type SlotDefinition } from "@/lib/slots";
 import type { Course, FileEntry, Section } from "@/lib/types";
 import {
@@ -64,6 +67,19 @@ const GROUP_ORDER = [
   "Other Documents",
 ];
 
+const LAB_GROUP_ORDER = [
+  "Lab Final",
+  "Lab Performance",
+  "Lab Report",
+  "Gradesheet",
+  "Attendance",
+  "CER",
+  "CV / Teacher Profile",
+  "Class Routine",
+  "BLC Link",
+  "Other Documents",
+];
+
 const RECORD_GROUP_TITLES = new Set(["Gradesheet", "Attendance report"]);
 
 const DOCUMENT_GROUP_TITLES = new Set([
@@ -106,7 +122,7 @@ function isQuizGroup(group: SlotGroup) {
 
 function getQuizQuestionSetForPreview(
   slot: SlotDefinition,
-) {
+): "B" | null | undefined {
   const match = slot.category.match(/^theory_quiz_([123])_question(_set_b)?$/);
 
   if (!match) {
@@ -122,6 +138,16 @@ function getQuizQuestionSetForPreview(
 
 function getGroupTitle(slot: SlotDefinition) {
   const category = slot.category;
+
+  if (category.startsWith("lab_final_")) return "Lab Final";
+  if (category.startsWith("lab_performance_")) return "Lab Performance";
+  if (category.startsWith("lab_report_")) return "Lab Report";
+  if (category === "lab_tabulation_sheet") return "Gradesheet";
+  if (category === "lab_attendance_report") return "Attendance";
+  if (category === "lab_cer") return "CER";
+  if (category === "lab_cv") return "CV / Teacher Profile";
+  if (category === "lab_class_schedule") return "Class Routine";
+  if (category === "lab_blc_link_record") return "BLC Link";
 
   if (category.endsWith("_cer")) return "CER";
   if (category.includes("mid_script")) return "Mid";
@@ -141,15 +167,12 @@ function getGroupTitle(slot: SlotDefinition) {
   ) {
     return "Class Routine";
   }
-  if (category.includes("lecture_sample") || category.includes("blc")) {
+  if (category.includes("lecture_sample")) {
     return "Lecture Sample";
   }
-  if (category.includes("teacher_profile") || category === "lab_cv") {
+  if (category.includes("teacher_profile")) {
     return "Teacher's Profile";
   }
-  if (category.includes("lab_final")) return "Lab Final";
-  if (category.includes("lab_report")) return "Lab Reports";
-  if (category.includes("lab_performance")) return "Lab Performance";
   if (category.includes("experiment")) return "Lab Experiment List";
   if (category.includes("assignment_list")) return "Lab Assignment List";
   if (category.includes("project_final")) return "Project Final";
@@ -159,7 +182,7 @@ function getGroupTitle(slot: SlotDefinition) {
   return "Other Documents";
 }
 
-function groupSlots(slots: SlotDefinition[]): SlotGroup[] {
+function groupSlots(slots: SlotDefinition[], isLabCourse: boolean): SlotGroup[] {
   const groups = new Map<string, SlotDefinition[]>();
 
   for (const slot of slots) {
@@ -171,12 +194,13 @@ function groupSlots(slots: SlotDefinition[]): SlotGroup[] {
     title,
     slots: groupedSlots,
   })).sort((left, right) => {
-    const leftIndex = GROUP_ORDER.indexOf(left.title);
-    const rightIndex = GROUP_ORDER.indexOf(right.title);
+    const groupOrder = isLabCourse ? LAB_GROUP_ORDER : GROUP_ORDER;
+    const leftIndex = groupOrder.indexOf(left.title);
+    const rightIndex = groupOrder.indexOf(right.title);
 
     return (
-      (leftIndex === -1 ? GROUP_ORDER.length : leftIndex) -
-      (rightIndex === -1 ? GROUP_ORDER.length : rightIndex)
+      (leftIndex === -1 ? groupOrder.length : leftIndex) -
+      (rightIndex === -1 ? groupOrder.length : rightIndex)
     );
   });
 }
@@ -307,13 +331,22 @@ export function SectionUploadPage({
   const requiredSlotCount = slots.filter(isRequiredSlot).length;
   const progress =
     requiredSlotCount > 0 ? (uploadedCount / requiredSlotCount) * 100 : 0;
-  const groupedSlots = useMemo(() => groupSlots(slots), [slots]);
+  const isLabCourse = course.course_type === "Lab";
+  const groupedSlots = useMemo(
+    () => groupSlots(slots, isLabCourse),
+    [isLabCourse, slots],
+  );
   const isProjectCourse = course.course_type === "Project";
   const regularGroups = groupedSlots.filter(
-    (group) => !isCompactGroup(group) && !isRecordGroup(group),
+    (group) =>
+      isLabCourse || (!isCompactGroup(group) && !isRecordGroup(group)),
   );
-  const recordGroups = groupedSlots.filter(isRecordGroup);
-  const compactGroups = groupedSlots.filter(isCompactGroup);
+  const recordGroups = isLabCourse
+    ? []
+    : groupedSlots.filter(isRecordGroup);
+  const compactGroups = isLabCourse
+    ? []
+    : groupedSlots.filter(isCompactGroup);
   const sectionDocumentsComplete =
     compactGroups.length > 0 &&
     compactGroups.every((group) =>
@@ -357,6 +390,14 @@ export function SectionUploadPage({
 
   async function handleUpload(slot: SlotDefinition, file: File) {
     const slotKey = getSlotKey(slot);
+    const filenameParams = {
+      courseCode: course.course_code,
+      sectionLabel: section.section_label,
+      teacherInitial: section.teacher_initial,
+      semester: course.semester,
+      quizQuestionSet: getQuizQuestionSetForPreview(slot),
+      extensionOverride: getUploadExtensionOverride(slot, file.name),
+    };
     const optimisticEntry: FileEntry = {
       id: `optimistic:${slotKey}`,
       course_id: course.id,
@@ -365,14 +406,11 @@ export function SectionUploadPage({
       sub_category: slot.subCategory,
       quiz_number: slot.quizNumber,
       original_filename: file.name,
-      renamed_filename: generateFilename(slot, {
-        courseCode: course.course_code,
-        sectionLabel: section.section_label,
-        teacherInitial: section.teacher_initial,
-        semester: course.semester,
-        quizQuestionSet: getQuizQuestionSetForPreview(slot),
-        extensionOverride: getUploadExtensionOverride(slot, file.name),
-      }),
+      renamed_filename:
+        getAlreadyFormattedQuizQuestionFilename(slot, {
+          ...filenameParams,
+          originalFilename: file.name,
+        }) ?? generateFilename(slot, filenameParams),
       storage_path: "",
       storage_url: "",
       uploaded_at: new Date().toISOString(),

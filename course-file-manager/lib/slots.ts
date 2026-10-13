@@ -161,34 +161,30 @@ export const LAB_SECTION_SLOTS: SlotDefinition[] = [
   sectionSlot(
     "lab_final_rubrics",
     "Lab Final Gradesheet / Rubrics",
-    ".pdf",
+    ".xlsx",
   ),
-  sectionSlot("lab_final_question", "Lab Final Question", ".pdf"),
+  ...representativeSlots("lab_performance", "Lab Performance", ".pdf"),
+  sectionSlot(
+    "lab_performance_rubrics",
+    "Lab Performance Gradesheet / Rubrics",
+    ".xlsx",
+  ),
   ...representativeSlots("lab_report", "Lab Report", ".pdf"),
   sectionSlot(
     "lab_report_rubrics",
     "Lab Report Gradesheet / Rubrics",
-    ".pdf",
-  ),
-  ...representativeSlots("lab_performance", "Lab Performance", ".pdf"),
-  sectionSlot("lab_performance_question", "Lab Performance Question", ".pdf"),
-  sectionSlot(
-    "lab_performance_rubrics",
-    "Lab Performance Gradesheet / Rubrics",
-    ".pdf",
+    ".xlsx",
   ),
   sectionSlot(
     "lab_tabulation_sheet",
     "Final Section-wise Gradesheet / Lab Tabulation Sheet",
     ".pdf",
   ),
-  sectionSlot("lab_attendance_report", "Attendance Report", ".xlsx"),
+  sectionSlot("lab_attendance_report", "Attendance Report", ".pdf"),
   sectionSlot("lab_cer", "CER File", ".xlsx"),
-  sectionSlot("lab_cv", "Teacher's Profile", ".xlsx"),
+  sectionSlot("lab_cv", "CV / Teacher Profile", ".pdf"),
   sectionSlot("lab_class_schedule", "Class Routine", ".xlsx"),
-  sectionSlot("lab_experiment_list", "Lab Experiment List", ".pdf"),
-  sectionSlot("lab_assignment_list", "Lab Assignment List", ".pdf"),
-  sectionSlot("lab_blc_link_record", "Lecture Sample", ".pdf"),
+  sectionSlot("lab_blc_link_record", "BLC Link", ".pdf"),
 ];
 
 export const LAB_COURSE_SLOTS: SlotDefinition[] = [
@@ -231,7 +227,7 @@ export const PROJECT_SECTION_SLOTS: SlotDefinition[] = [
     "Final Section-wise Gradesheet / Project Tabulation Sheet",
     ".pdf",
   ),
-  sectionSlot("project_attendance_report", "Attendance Report", ".xlsx"),
+  sectionSlot("project_attendance_report", "Attendance Report", ".pdf"),
   sectionSlot("project_list", "Project List", ".xlsx"),
   sectionSlot("project_cer", "CER File", ".xlsx"),
 ];

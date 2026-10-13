@@ -132,7 +132,7 @@ export function SectionDialog({
                 id="section-label"
                 value={form.section_label}
                 onChange={(event) =>
-                  updateField("section_label", event.target.value)
+                  updateField("section_label", event.target.value.toUpperCase())
                 }
                 placeholder="43A"
                 required
@@ -144,7 +144,7 @@ export function SectionDialog({
                 id="teacher-initial"
                 value={form.teacher_initial}
                 onChange={(event) =>
-                  updateField("teacher_initial", event.target.value)
+                  updateField("teacher_initial", event.target.value.toUpperCase())
                 }
                 placeholder="NT"
                 required

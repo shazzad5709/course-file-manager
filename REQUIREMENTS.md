@@ -95,20 +95,16 @@ The `Category` field in filenames for representative examples is always one of: 
 | Slot | Naming Pattern |
 |---|---|
 | Lab Final Script (×3) | `CourseCode_Section_LabFinal_TeacherInitial_Category_Semester.pdf` |
-| Lab Final Gradesheet / Rubrics | `CourseCode_Section_LabFinal_Rubrics_TeacherInitial_Semester.pdf` |
-| Lab Final Question | `CourseCode_Section_LabFinal_Question_TeacherInitial_Semester.pdf` |
-| Lab Report (×3) | `CourseCode_Section_LabReport_TeacherInitial_Category_Semester.pdf` |
-| Lab Report Gradesheet / Rubrics | `CourseCode_Section_LabReport_Rubrics_TeacherInitial_Semester.pdf` |
+| Lab Final Gradesheet / Rubrics | `CourseCode_Section_LabFinal_Rubrics_TeacherInitial_Semester.xlsx` |
 | Lab Performance (×3) | `CourseCode_Section_LabMid_TeacherInitial_Category_Semester.pdf` |
-| Lab Performance Question | `CourseCode_Section_LabPerformance_Question_TeacherInitial_Semester.pdf` |
-| Lab Performance Gradesheet / Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
+| Lab Performance Gradesheet / Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.xlsx` |
+| Lab Report (×3) | `CourseCode_Section_LabReport_TeacherInitial_Category_Semester.pdf` |
+| Lab Report Gradesheet / Rubrics | `CourseCode_Section_LabReport_Rubrics_TeacherInitial_Semester.xlsx` |
 | Final Section-wise Gradesheet / Lab Tabulation Sheet | `CourseCode_Section_LabTabulationSheet_TeacherInitial_Semester.pdf` |
-| Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.xlsx` |
+| Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.pdf` |
 | CER File | `CourseCode_Section_TeacherInitial_CER_Semester.xlsx` |
-| Teacher's Profile (CV) | `CourseCode_Section_CV_TeacherInitial_Semester.xlsx` |
+| Teacher's Profile (CV) | `CourseCode_Section_CV_TeacherInitial_Semester.pdf` or `.docx` |
 | Class Schedule | `CourseCode_Section_TeacherInitial_ClassSchedule_Semester.xlsx` |
-| Lab Experiment List | `CourseCode_LabExperimentList_Section_TeacherInitial_Semester.pdf` |
-| Lab Assignment List | `CourseCode_LabAssignmentsList_Section_TeacherInitial_Semester.pdf` |
 | BLC Link Record | `CourseCode_BLC_Section_TeacherInitial_Semester.pdf` |
 
 ### 3.4 Lab Course — Course-Level (Module Leader)
@@ -132,7 +128,7 @@ The `Category` field in filenames for representative examples is always one of: 
 | Lab Performance Document (×3) | `CourseCode_Section_LabPerformance_TeacherInitial_Category_Semester.pdf` |
 | Lab Performance Gradesheet / Rubrics | `CourseCode_Section_LabPerformance_Rubrics_TeacherInitial_Semester.pdf` |
 | Final Section-wise Gradesheet / Project Tabulation Sheet | `CourseCode_Section_ProjectTabulationSheet_TeacherInitial_Semester.pdf` |
-| Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.xlsx` |
+| Attendance Report | `CourseCode_Section_TeacherInitial_Attendance_Report_Semester.pdf` |
 | Project List | `CourseCode_Section_TeacherInitial_ProjectList_Semester.xlsx` |
 | CER File | `CourseCode_Section_TeacherInitial_CER_Semester.xlsx` |
 

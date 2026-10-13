@@ -6,8 +6,14 @@ import {
   FILE_ENTRY_CACHE_TAG,
   READ_CACHE_SECONDS,
 } from "@/lib/cache";
-import { getUploadExtensionOverride } from "@/lib/file-extensions";
-import { generateFilename } from "@/lib/naming";
+import {
+  assertUploadExtension,
+  getUploadExtensionOverride,
+} from "@/lib/file-extensions";
+import {
+  generateFilename,
+  getAlreadyFormattedQuizQuestionFilename,
+} from "@/lib/naming";
 import { getSlotsForCourse, type SlotDefinition } from "@/lib/slots";
 import { supabase } from "@/lib/supabase";
 import type { Course, FileEntry, Section } from "@/lib/types";
@@ -436,6 +442,7 @@ export async function uploadFile(
   const canonicalSlot = getCanonicalSectionSlot(course, slot);
 
   assertMatchingContext(courseId, sectionId, course, section);
+  assertUploadExtension(canonicalSlot, file.name);
 
   const quizInfo = getQuizQuestionInfo(canonicalSlot.category);
   const quizEntries = quizInfo
@@ -461,15 +468,21 @@ export async function uploadFile(
     throw new Error("This slot already has an uploaded file. Refresh the page.");
   }
 
-  const quizQuestionSet = quizInfo?.setLabel === "B" ? "B" : null;
-  const renamedFilename = generateFilename(canonicalSlot, {
+  const quizQuestionSet: "B" | null =
+    quizInfo?.setLabel === "B" ? "B" : null;
+  const filenameParams = {
     courseCode: course.course_code,
     sectionLabel: section.section_label,
     teacherInitial: section.teacher_initial,
     semester: course.semester,
     quizQuestionSet,
     extensionOverride: getUploadExtensionOverride(canonicalSlot, file.name),
-  });
+  };
+  const renamedFilename =
+    getAlreadyFormattedQuizQuestionFilename(canonicalSlot, {
+      ...filenameParams,
+      originalFilename: file.name,
+    }) ?? generateFilename(canonicalSlot, filenameParams);
 
   const storagePath = getSectionStoragePath(
     courseId,

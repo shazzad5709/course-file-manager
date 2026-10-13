@@ -1,0 +1,10 @@
+# Astra coordinates; Terra implements by default.
+model = "gpt-6-astra"
+model_reasoning_effort = "low"
+
+[agents]
+enabled = true
+# Maximum spawned threads, excluding the root coordinator.
+max_concurrent_threads_per_session = 4
+default_subagent_model = "gpt-5.6-terra"
+default_subagent_reasoning_effort = "medium"

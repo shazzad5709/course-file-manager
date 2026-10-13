@@ -72,6 +72,45 @@ function extensionFor(slot: SlotDefinition, params: FilenameParams) {
   return params.extensionOverride ?? slot.expectedExtension;
 }
 
+function isTheoryQuizQuestionSlot(slot: SlotDefinition) {
+  return (
+    slot.category.startsWith("theory_quiz_") &&
+    (slot.category.endsWith("_question") ||
+      slot.category.endsWith("_question_set_b"))
+  );
+}
+
+function quizQuestionSuffixesForSlot(slot: SlotDefinition) {
+  return slot.quizSet === "B" ? ["B"] : ["", "A"];
+}
+
+export function getAlreadyFormattedQuizQuestionFilename(
+  slot: SlotDefinition,
+  params: FilenameParams & { originalFilename: string },
+) {
+  if (!isTheoryQuizQuestionSlot(slot)) {
+    return null;
+  }
+
+  const originalFilename = params.originalFilename.trim();
+  const values = sectionParts(slot, params);
+  const validFilenames = quizQuestionSuffixesForSlot(slot).map((setLabel) =>
+    withExtension(
+      [
+        values.courseCode,
+        values.sectionLabel,
+        `Quiz${requireQuizNumber(slot)}${setLabel}`,
+        "Question",
+        values.teacherInitial,
+        values.semester,
+      ],
+      extensionFor(slot, params),
+    ),
+  );
+
+  return validFilenames.includes(originalFilename) ? originalFilename : null;
+}
+
 export function generateFilename(
   slot: SlotDefinition,
   params: FilenameParams,
@@ -143,7 +182,7 @@ export function generateFilename(
         values.teacherInitial,
         values.semester,
       ],
-      slot.expectedExtension,
+      extensionFor(slot, params),
     );
   }
 
@@ -533,7 +572,7 @@ function sectionDocumentWithTeacher(
       values.teacherInitial,
       values.semester,
     ],
-    slot.expectedExtension,
+    extensionFor(slot, params),
   );
 }
 

@@ -1,6 +1,26 @@
 import type { SlotDefinition } from "@/lib/slots";
 
 const PRESENTATION_EXTENSIONS = [".pdf", ".pptx"];
+const IMAGE_EXTENSIONS = [".jpg", ".jpeg", ".png", ".webp", ".heic"];
+const PROFILE_EXTENSIONS = [".pdf", ".docx"];
+
+function isProfileSlot(slot: SlotDefinition) {
+  return (
+    slot.category === "theory_teacher_profile" || slot.category === "lab_cv"
+  );
+}
+
+function isAttendanceSlot(slot: SlotDefinition) {
+  return slot.category.endsWith("_attendance_report");
+}
+
+function isLabRubricsSlot(slot: SlotDefinition) {
+  return [
+    "lab_final_rubrics",
+    "lab_performance_rubrics",
+    "lab_report_rubrics",
+  ].includes(slot.category);
+}
 
 function getOriginalExtension(filename: string) {
   const trimmed = filename.trim();
@@ -26,6 +46,19 @@ export function getAcceptedExtensions(slot: SlotDefinition) {
     return PRESENTATION_EXTENSIONS;
   }
 
+  if (isProfileSlot(slot)) {
+    return PROFILE_EXTENSIONS;
+  }
+
+  if (
+    slot.category === "theory_class_routine" ||
+    slot.category === "lab_class_schedule"
+  ) {
+    return Array.from(
+      new Set([slot.expectedExtension, ".pdf", ...IMAGE_EXTENSIONS]),
+    );
+  }
+
   return [slot.expectedExtension];
 }
 
@@ -42,4 +75,27 @@ export function getUploadExtensionOverride(
   return getAcceptedExtensions(slot).includes(originalExtension)
     ? originalExtension
     : undefined;
+}
+
+export function assertUploadExtension(
+  slot: SlotDefinition,
+  filename: string,
+) {
+  if (
+    !isProfileSlot(slot) &&
+    !isAttendanceSlot(slot) &&
+    !isLabRubricsSlot(slot)
+  ) {
+    return;
+  }
+
+  if (getAcceptedExtensions(slot).includes(getOriginalExtension(filename) ?? "")) {
+    return;
+  }
+
+  const extensions = getAcceptedExtensions(slot)
+    .map((extension) => extension.slice(1).toUpperCase())
+    .join(" or ");
+
+  throw new Error(`${slot.label} files must be ${extensions}.`);
 }

@@ -80,9 +80,9 @@ test("groups lab section files into required export folders", () => {
   assert.equal(
     getSectionEntryRelativePath({
       document_category: "lab_performance_rubrics",
-      renamed_filename: "CSE110_43A_LabPerformance_Rubrics_NT_Fall-25.pdf",
+      renamed_filename: "CSE110_43A_LabPerformance_Rubrics_NT_Fall-25.xlsx",
     }),
-    "Lab Performance/CSE110_43A_LabPerformance_Rubrics_NT_Fall-25.pdf",
+    "Lab Performance/CSE110_43A_LabPerformance_Rubrics_NT_Fall-25.xlsx",
   );
 
   assert.equal(
